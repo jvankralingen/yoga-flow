@@ -3,7 +3,7 @@
 // This will be populated after running the generate-audio script
 // Maps text -> audio file path
 let audioManifest: Record<string, string> | null = null;
-let manifestLoading: Promise<void> | null = null;
+let manifestLoading: Promise<Record<string, string>> | null = null;
 
 export async function loadAudioManifest(): Promise<Record<string, string>> {
   if (audioManifest) {
@@ -11,8 +11,7 @@ export async function loadAudioManifest(): Promise<Record<string, string>> {
   }
 
   if (manifestLoading) {
-    await manifestLoading;
-    return audioManifest || {};
+    return manifestLoading;
   }
 
   manifestLoading = (async () => {
@@ -29,15 +28,14 @@ export async function loadAudioManifest(): Promise<Record<string, string>> {
       console.log('[Audio] Failed to load manifest:', error);
       audioManifest = {};
     }
+    return audioManifest || {};
   })();
 
-  await manifestLoading;
-  return audioManifest || {};
+  return manifestLoading;
 }
 
-export function getPreGeneratedAudioUrl(text: string): string | null {
-  if (!audioManifest) {
-    return null;
-  }
-  return audioManifest[text] || null;
+// Always call this async version to ensure manifest is loaded
+export async function getPreGeneratedAudioUrl(text: string): Promise<string | null> {
+  const manifest = await loadAudioManifest();
+  return manifest[text] || null;
 }

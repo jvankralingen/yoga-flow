@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef } from 'react';
 import { getCachedAudio, setCachedAudio } from '@/lib/audioCache';
-import { loadAudioManifest, getPreGeneratedAudioUrl } from '@/lib/audioManifest';
+import { getPreGeneratedAudioUrl } from '@/lib/audioManifest';
 
 interface UseVoiceOptions {
   enabled: boolean;
@@ -15,11 +15,6 @@ export function useVoice({ enabled }: UseVoiceOptions) {
 
   // Keep ref in sync with prop
   enabledRef.current = enabled;
-
-  // Load audio manifest on mount
-  useEffect(() => {
-    loadAudioManifest();
-  }, []);
 
   const speak = useCallback(async (text: string): Promise<void> => {
     if (!enabledRef.current) {
@@ -39,7 +34,7 @@ export function useVoice({ enabled }: UseVoiceOptions) {
           }
 
           // 1. First check for pre-generated audio file
-          const preGeneratedUrl = getPreGeneratedAudioUrl(text);
+          const preGeneratedUrl = await getPreGeneratedAudioUrl(text);
           if (preGeneratedUrl) {
             console.log('[TTS] Using pre-generated audio:', preGeneratedUrl);
             const audio = new Audio(preGeneratedUrl);
