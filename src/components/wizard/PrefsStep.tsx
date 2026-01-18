@@ -40,18 +40,30 @@ export function PrefsStep({
       // Use pre-generated audio file
       const audio = new Audio('/audio/test.mp3');
 
+      // Preload the audio
+      audio.preload = 'auto';
+
       audio.onended = () => {
         setAudioTestStatus('success');
         setTimeout(() => setAudioTestStatus('idle'), 2000);
       };
 
-      audio.onerror = () => {
+      audio.onerror = (e) => {
+        console.error('[Test Audio] Error:', e);
         setAudioTestStatus('error');
         setTimeout(() => setAudioTestStatus('idle'), 2000);
       };
 
+      // Wait for audio to be ready before playing
+      await new Promise<void>((resolve, reject) => {
+        audio.oncanplaythrough = () => resolve();
+        audio.onerror = () => reject(new Error('Failed to load audio'));
+        audio.load();
+      });
+
       await audio.play();
     } catch (error) {
+      console.error('[Test Audio] Play failed:', error);
       setAudioTestStatus('error');
       setTimeout(() => setAudioTestStatus('idle'), 2000);
     }
