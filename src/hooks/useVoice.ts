@@ -8,6 +8,9 @@ interface UseVoiceOptions {
   enabled: boolean;
 }
 
+// Global audio context unlock state
+let audioUnlocked = false;
+
 export function useVoice({ enabled }: UseVoiceOptions) {
   const enabledRef = useRef(enabled);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -15,6 +18,27 @@ export function useVoice({ enabled }: UseVoiceOptions) {
 
   // Keep ref in sync with prop
   enabledRef.current = enabled;
+
+  // Unlock audio on mobile - must be called from a user gesture (click/tap)
+  const unlockAudio = useCallback(async () => {
+    if (audioUnlocked) return;
+
+    try {
+      // Create a silent audio element and play it to unlock audio
+      const silentAudio = new Audio('/audio/test.mp3');
+      silentAudio.volume = 0.01; // Nearly silent
+      silentAudio.currentTime = 0;
+
+      await silentAudio.play();
+      silentAudio.pause();
+      silentAudio.currentTime = 0;
+
+      audioUnlocked = true;
+      console.log('[TTS] Audio unlocked for mobile');
+    } catch (error) {
+      console.warn('[TTS] Failed to unlock audio:', error);
+    }
+  }, []);
 
   const speak = useCallback(async (text: string): Promise<void> => {
     if (!enabledRef.current) {
@@ -181,6 +205,7 @@ export function useVoice({ enabled }: UseVoiceOptions) {
     speakLastBreath,
     speakComplete,
     stop,
+    unlockAudio,
     isReady: true,
   };
 }

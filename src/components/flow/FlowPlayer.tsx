@@ -21,7 +21,7 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
   const isLastPose = currentIndex === flow.poses.length - 1;
   const announcedIndexRef = useRef(-1);
 
-  const { speakPose, speakDuration, speakLastBreath, speakComplete, stop: stopVoice } = useVoice({
+  const { speakPose, speakDuration, speakLastBreath, speakComplete, stop: stopVoice, unlockAudio } = useVoice({
     enabled: flow.voiceEnabled,
   });
   const lastBreathAnnouncedRef = useRef(-1);
@@ -107,20 +107,21 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
   }, [flowCompleted, speakComplete]);
 
   // Handle Start button click - announces first pose and starts timer
-  const handleStart = useCallback(() => {
+  const handleStart = useCallback(async () => {
     if (!isSessionActive) {
       // Starting the session
       setIsSessionActive(true);
+
+      // Unlock audio for mobile browsers (must happen in user gesture context)
+      await unlockAudio();
 
       if (currentIndex === 0 && announcedIndexRef.current === -1) {
         // First time clicking start - announce the pose, then start timer after audio
         announcedIndexRef.current = 0;
         const flowPose = flow.poses[0];
-        (async () => {
-          await speakPose(flowPose.pose.englishName, flowPose.pose.description, flowPose.side);
-          await speakDuration(flowPose.duration, flow.timerMode);
-          start(); // Start timer after audio finishes
-        })();
+        await speakPose(flowPose.pose.englishName, flowPose.pose.description, flowPose.side);
+        await speakDuration(flowPose.duration, flow.timerMode);
+        start(); // Start timer after audio finishes
         return;
       }
       start();
@@ -130,7 +131,7 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
       stopVoice();
       toggle();
     }
-  }, [isSessionActive, currentIndex, flow.poses, flow.timerMode, speakPose, speakDuration, start, toggle, stopVoice]);
+  }, [isSessionActive, currentIndex, flow.poses, flow.timerMode, speakPose, speakDuration, start, toggle, stopVoice, unlockAudio]);
 
   const goToPrevious = () => {
     if (currentIndex > 0) {
