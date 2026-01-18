@@ -10,6 +10,7 @@ interface UseVoiceOptions {
 
 // Global audio context unlock state
 let audioUnlocked = false;
+let speakingInProgress = false;
 
 export function useVoice({ enabled }: UseVoiceOptions) {
   const enabledRef = useRef(enabled);
@@ -24,17 +25,37 @@ export function useVoice({ enabled }: UseVoiceOptions) {
     if (audioUnlocked) return;
 
     try {
-      // Create a silent audio element and play it to unlock audio
-      const silentAudio = new Audio('/audio/test.mp3');
-      silentAudio.volume = 0.01; // Nearly silent
+      // Create AudioContext to unlock audio on iOS Safari
+      const AudioContext = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext;
+      if (AudioContext) {
+        const ctx = new AudioContext();
+        // Create a short silent buffer and play it
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+        console.log('[TTS] AudioContext unlocked');
+      }
 
-      await silentAudio.play();
-      silentAudio.pause();
+      // Also play a real audio file briefly for Safari
+      const silentAudio = new Audio('/audio/test.mp3');
+      silentAudio.volume = 0.01;
+
+      // Use a promise that resolves when audio starts playing
+      const playPromise = silentAudio.play();
+      if (playPromise !== undefined) {
+        await playPromise;
+        // Let it play for a tiny bit then stop
+        setTimeout(() => silentAudio.pause(), 100);
+      }
 
       audioUnlocked = true;
       console.log('[TTS] Audio unlocked for mobile');
     } catch (error) {
       console.warn('[TTS] Failed to unlock audio:', error);
+      // Still mark as unlocked to prevent repeated attempts
+      audioUnlocked = true;
     }
   }, []);
 
@@ -44,7 +65,14 @@ export function useVoice({ enabled }: UseVoiceOptions) {
       return;
     }
 
+    // Prevent duplicate calls while speaking
+    if (speakingInProgress) {
+      console.log('[TTS] Already speaking, skipping:', text.substring(0, 30));
+      return;
+    }
+
     console.log('[TTS] Speaking:', text.substring(0, 50));
+    speakingInProgress = true;
 
     return new Promise((resolve) => {
       (async () => {
@@ -65,12 +93,14 @@ export function useVoice({ enabled }: UseVoiceOptions) {
             audio.onended = () => {
               console.log('[TTS] Audio ended');
               audioRef.current = null;
+              speakingInProgress = false;
               resolve();
             };
 
             audio.onerror = (e) => {
               console.error('[TTS] Pre-generated audio error:', e);
               audioRef.current = null;
+              speakingInProgress = false;
               resolve();
             };
 
@@ -131,6 +161,7 @@ export function useVoice({ enabled }: UseVoiceOptions) {
             console.log('[TTS] Audio ended');
             URL.revokeObjectURL(audioUrl);
             audioRef.current = null;
+            speakingInProgress = false;
             resolve();
           };
 
@@ -138,6 +169,7 @@ export function useVoice({ enabled }: UseVoiceOptions) {
             console.error('[TTS] Audio error:', e);
             URL.revokeObjectURL(audioUrl);
             audioRef.current = null;
+            speakingInProgress = false;
             resolve();
           };
 
@@ -145,6 +177,7 @@ export function useVoice({ enabled }: UseVoiceOptions) {
           console.log('[TTS] Audio playing');
         } catch (error) {
           console.error('[TTS] Speech error:', error);
+          speakingInProgress = false;
           resolve();
         }
       })();
@@ -194,6 +227,8 @@ export function useVoice({ enabled }: UseVoiceOptions) {
       audioRef.current.pause();
       audioRef.current = null;
     }
+    // Reset speaking flag
+    speakingInProgress = false;
   }, []);
 
   return {
