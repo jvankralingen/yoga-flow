@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { WizardState, FocusArea, TimerMode, BreathPace, Difficulty } from '@/lib/types';
-import { generateFlow } from '@/lib/flowGenerator';
+import { generateFlow, generateTestFlow } from '@/lib/flowGenerator';
 import { saveFlow } from '@/lib/storage';
 import { TimeStep } from './TimeStep';
 import { FocusStep } from './FocusStep';
@@ -71,6 +71,12 @@ export function WizardContainer() {
     router.push(`/flow/${flow.id}`);
   };
 
+  const handleTestMode = () => {
+    const flow = generateTestFlow();
+    saveFlow(flow);
+    router.push(`/flow/${flow.id}`);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white flex flex-col">
       {/* Progress indicator */}
@@ -101,6 +107,7 @@ export function WizardContainer() {
             value={state.duration}
             onChange={setDuration}
             onNext={nextStep}
+            onTestMode={handleTestMode}
           />
         )}
 

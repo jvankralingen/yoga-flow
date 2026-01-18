@@ -295,6 +295,35 @@ export function generateFlow(options: FlowOptions): Flow {
   };
 }
 
+export function generateTestFlow(): Flow {
+  // Create a short test flow with fast durations (2 seconds per pose)
+  const testPoses = ['mountain', 'forward-fold', 'downward-dog', 'childs-pose', 'corpse'];
+  const flowPoses: FlowPose[] = [];
+
+  for (const poseId of testPoses) {
+    const pose = poses.find(p => p.id === poseId);
+    if (pose) {
+      flowPoses.push({
+        pose,
+        duration: 2, // 2 seconds per pose for quick testing
+        side: undefined,
+      });
+    }
+  }
+
+  return {
+    id: generateId(),
+    createdAt: new Date().toISOString(),
+    duration: 1,
+    focusAreas: ['full-body'],
+    timerMode: 'seconds',
+    breathPace: 'fast',
+    voiceEnabled: true,
+    difficulty: 'beginner',
+    poses: flowPoses,
+  };
+}
+
 export function calculateFlowDuration(flow: Flow): { minutes: number; seconds: number } {
   let totalSeconds = 0;
 

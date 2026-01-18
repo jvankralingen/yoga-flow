@@ -4,11 +4,12 @@ interface TimeStepProps {
   value: number | null;
   onChange: (minutes: number) => void;
   onNext: () => void;
+  onTestMode?: () => void;
 }
 
 const timeOptions = [5, 10, 15, 20, 30];
 
-export function TimeStep({ value, onChange, onNext }: TimeStepProps) {
+export function TimeStep({ value, onChange, onNext, onTestMode }: TimeStepProps) {
   return (
     <div className="flex flex-col items-center gap-8 px-4">
       <div className="text-center">
@@ -44,6 +45,15 @@ export function TimeStep({ value, onChange, onNext }: TimeStepProps) {
           className="w-full max-w-sm py-4 bg-indigo-600 text-white rounded-2xl font-semibold text-lg hover:bg-indigo-700 transition-colors shadow-lg"
         >
           Volgende
+        </button>
+      )}
+
+      {onTestMode && (
+        <button
+          onClick={onTestMode}
+          className="w-full max-w-sm py-3 bg-orange-500 text-white rounded-2xl font-semibold text-sm hover:bg-orange-600 transition-colors"
+        >
+          Test Mode (5 poses, 2s each)
         </button>
       )}
     </div>
