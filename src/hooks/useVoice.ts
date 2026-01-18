@@ -27,11 +27,9 @@ export function useVoice({ enabled }: UseVoiceOptions) {
       // Create a silent audio element and play it to unlock audio
       const silentAudio = new Audio('/audio/test.mp3');
       silentAudio.volume = 0.01; // Nearly silent
-      silentAudio.currentTime = 0;
 
       await silentAudio.play();
       silentAudio.pause();
-      silentAudio.currentTime = 0;
 
       audioUnlocked = true;
       console.log('[TTS] Audio unlocked for mobile');

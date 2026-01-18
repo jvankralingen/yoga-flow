@@ -26,14 +26,29 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
   });
   const lastBreathAnnouncedRef = useRef(-1);
 
-  const handleComplete = useCallback(() => {
+  // Refs to access timer functions in handleComplete
+  const timerResetRef = useRef<(time: number) => void>(() => {});
+  const timerStartRef = useRef<() => void>(() => {});
+
+  const handleComplete = useCallback(async () => {
     if (!isLastPose) {
-      setCurrentIndex(prev => prev + 1);
+      const newIndex = currentIndex + 1;
+      setCurrentIndex(newIndex);
+      timerResetRef.current(flow.poses[newIndex].duration);
+
+      // Announce the next pose
+      const flowPose = flow.poses[newIndex];
+      announcedIndexRef.current = newIndex;
+      setIsSessionActive(true);
+
+      await speakPose(flowPose.pose.englishName, flowPose.pose.description, flowPose.side);
+      await speakDuration(flowPose.duration, flow.timerMode);
+      timerStartRef.current();
     } else {
       setFlowCompleted(true);
       saveFlow(flow);
     }
-  }, [isLastPose, flow]);
+  }, [isLastPose, flow, currentIndex, speakPose, speakDuration]);
 
   const {
     timeLeft,
@@ -51,40 +66,17 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
     autoStart: false,
   });
 
-  // Handle pose change - reset timer and announce (for poses after the first)
+  // Keep refs updated
+  timerResetRef.current = reset;
+  timerStartRef.current = start;
+
+  // Handle initial pose setup (just reset timer, don't announce - that's done in handlers)
   useEffect(() => {
-    if (announcedIndexRef.current === currentIndex) {
-      return;
-    }
-
-    // For first pose, don't auto-announce - wait for user click
-    if (currentIndex === 0) {
+    // Only reset timer if this pose hasn't been announced yet
+    if (announcedIndexRef.current !== currentIndex && currentIndex === 0) {
       reset(flow.poses[currentIndex].duration);
-      return;
     }
-
-    announcedIndexRef.current = currentIndex;
-    reset(flow.poses[currentIndex].duration);
-
-    const flowPose = flow.poses[currentIndex];
-    let cancelled = false;
-
-    // Announce the new pose after a small delay, then duration, then start timer
-    setIsSessionActive(true);
-    const announceTimer = setTimeout(async () => {
-      await speakPose(flowPose.pose.englishName, flowPose.pose.description, flowPose.side);
-      if (cancelled) return;
-      await speakDuration(flowPose.duration, flow.timerMode);
-      if (!cancelled) {
-        start();
-      }
-    }, 500);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(announceTimer);
-    };
-  }, [currentIndex, flow.poses, flow.timerMode, reset, speakPose, speakDuration, start]);
+  }, [currentIndex, flow.poses, reset]);
 
   // Announce last breath when timeLeft reaches 1 (in breaths mode)
   useEffect(() => {
@@ -133,17 +125,34 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
     }
   }, [isSessionActive, currentIndex, flow.poses, flow.timerMode, speakPose, speakDuration, start, toggle, stopVoice, unlockAudio]);
 
-  const goToPrevious = () => {
+  // Helper to announce a pose and start the timer
+  const announcePoseAndStart = useCallback(async (index: number) => {
+    const flowPose = flow.poses[index];
+    announcedIndexRef.current = index;
+    setIsSessionActive(true);
+
+    await speakPose(flowPose.pose.englishName, flowPose.pose.description, flowPose.side);
+    await speakDuration(flowPose.duration, flow.timerMode);
+    start();
+  }, [flow.poses, flow.timerMode, speakPose, speakDuration, start]);
+
+  const goToPrevious = async () => {
     if (currentIndex > 0) {
       stopVoice();
-      setCurrentIndex(prev => prev - 1);
+      const newIndex = currentIndex - 1;
+      setCurrentIndex(newIndex);
+      reset(flow.poses[newIndex].duration);
+      await announcePoseAndStart(newIndex);
     }
   };
 
-  const goToNext = () => {
+  const goToNext = async () => {
     stopVoice();
     if (!isLastPose) {
-      setCurrentIndex(prev => prev + 1);
+      const newIndex = currentIndex + 1;
+      setCurrentIndex(newIndex);
+      reset(flow.poses[newIndex].duration);
+      await announcePoseAndStart(newIndex);
     } else {
       saveFlow(flow);
       router.push('/archive');
