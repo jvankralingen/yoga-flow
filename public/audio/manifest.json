@@ -60,5 +60,6 @@
   "We houden dit vast voor 90 seconden......": "/audio/duration-seconds-90.mp3",
   "We houden dit vast voor 120 seconden......": "/audio/duration-seconds-120.mp3",
   "Nog één keer. Adem in........... ...en uit...": "/audio/last-breath.mp3",
-  "Goed gedaan! De flow is voltooid!": "/audio/complete.mp3"
+  "Goed gedaan! De flow is voltooid!": "/audio/complete.mp3",
+  "Test. Een twee drie.": "/audio/test.mp3"
 }

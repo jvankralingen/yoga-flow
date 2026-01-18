@@ -37,30 +37,15 @@ export function PrefsStep({
     setAudioTestStatus('playing');
 
     try {
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: 'Test. Een twee drie.' }),
-      });
-
-      if (!response.ok) {
-        throw new Error('TTS request failed');
-      }
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
+      // Use pre-generated audio file
+      const audio = new Audio('/audio/test.mp3');
 
       audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
         setAudioTestStatus('success');
         setTimeout(() => setAudioTestStatus('idle'), 2000);
       };
 
       audio.onerror = () => {
-        URL.revokeObjectURL(audioUrl);
         setAudioTestStatus('error');
         setTimeout(() => setAudioTestStatus('idle'), 2000);
       };

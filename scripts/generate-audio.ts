@@ -138,6 +138,7 @@ async function main() {
   const fixedTexts = [
     { text: 'Nog één keer. Adem in........... ...en uit...', filename: 'last-breath.mp3' },
     { text: 'Goed gedaan! De flow is voltooid!', filename: 'complete.mp3' },
+    { text: 'Test. Een twee drie.', filename: 'test.mp3' },
   ];
 
   audioEntries.push(...fixedTexts);
