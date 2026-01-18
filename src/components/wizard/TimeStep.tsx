@@ -53,7 +53,7 @@ export function TimeStep({ value, onChange, onNext, onTestMode }: TimeStepProps)
           onClick={onTestMode}
           className="w-full max-w-sm py-3 bg-orange-500 text-white rounded-2xl font-semibold text-sm hover:bg-orange-600 transition-colors"
         >
-          Test Mode (5 poses, 2s each)
+          Test Mode (5 poses, 15s each)
         </button>
       )}
     </div>

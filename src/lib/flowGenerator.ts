@@ -296,8 +296,7 @@ export function generateFlow(options: FlowOptions): Flow {
 }
 
 export function generateTestFlow(): Flow {
-  // Create a short test flow with fast durations (2 seconds per pose)
-  // Voice is disabled because we don't have pre-generated audio for 2s duration
+  // Create a short test flow with 15 second poses (lowest pre-generated audio)
   const testPoses = ['mountain', 'forward-fold', 'downward-dog', 'childs-pose', 'corpse'];
   const flowPoses: FlowPose[] = [];
 
@@ -306,7 +305,7 @@ export function generateTestFlow(): Flow {
     if (pose) {
       flowPoses.push({
         pose,
-        duration: 2, // 2 seconds per pose for quick testing
+        duration: 15, // 15 seconds - lowest available pre-generated audio
         side: undefined,
       });
     }
@@ -319,7 +318,7 @@ export function generateTestFlow(): Flow {
     focusAreas: ['full-body'],
     timerMode: 'seconds',
     breathPace: 'fast',
-    voiceEnabled: false, // Disabled - no pre-generated audio for 2s
+    voiceEnabled: true,
     difficulty: 'beginner',
     poses: flowPoses,
   };
