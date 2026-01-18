@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate-audio": "npx tsx scripts/generate-audio.ts"
   },
   "dependencies": {
     "next": "16.1.3",

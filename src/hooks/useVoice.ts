@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import { getCachedAudio, setCachedAudio } from '@/lib/audioCache';
+import { loadAudioManifest, getPreGeneratedAudioUrl } from '@/lib/audioManifest';
 
 interface UseVoiceOptions {
   enabled: boolean;
@@ -14,6 +15,11 @@ export function useVoice({ enabled }: UseVoiceOptions) {
 
   // Keep ref in sync with prop
   enabledRef.current = enabled;
+
+  // Load audio manifest on mount
+  useEffect(() => {
+    loadAudioManifest();
+  }, []);
 
   const speak = useCallback(async (text: string): Promise<void> => {
     if (!enabledRef.current) {
@@ -32,7 +38,31 @@ export function useVoice({ enabled }: UseVoiceOptions) {
             audioRef.current = null;
           }
 
-          // Check cache first
+          // 1. First check for pre-generated audio file
+          const preGeneratedUrl = getPreGeneratedAudioUrl(text);
+          if (preGeneratedUrl) {
+            console.log('[TTS] Using pre-generated audio:', preGeneratedUrl);
+            const audio = new Audio(preGeneratedUrl);
+            audioRef.current = audio;
+
+            audio.onended = () => {
+              console.log('[TTS] Audio ended');
+              audioRef.current = null;
+              resolve();
+            };
+
+            audio.onerror = (e) => {
+              console.error('[TTS] Pre-generated audio error:', e);
+              audioRef.current = null;
+              resolve();
+            };
+
+            await audio.play();
+            console.log('[TTS] Audio playing (pre-generated)');
+            return;
+          }
+
+          // 2. Check IndexedDB cache
           let audioBlob = await getCachedAudio(text);
 
           // Ignore cached blobs that are too small (likely corrupt)
@@ -44,7 +74,7 @@ export function useVoice({ enabled }: UseVoiceOptions) {
           console.log('[TTS] Cache hit:', !!audioBlob);
 
           if (!audioBlob) {
-            // Not in cache, fetch from API
+            // 3. Not in cache, fetch from API
             console.log('[TTS] Fetching from API...');
             abortControllerRef.current = new AbortController();
 
