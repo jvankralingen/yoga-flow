@@ -75,9 +75,17 @@ export async function clearAudioCache(): Promise<void> {
       const request = store.clear();
 
       request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
+      request.onsuccess = () => {
+        console.log('[AudioCache] Cache cleared');
+        resolve();
+      };
     });
   } catch (error) {
     console.error('Failed to clear audio cache:', error);
   }
+}
+
+// Export to window for debugging in browser console
+if (typeof window !== 'undefined') {
+  (window as unknown as { clearYogaAudioCache: typeof clearAudioCache }).clearYogaAudioCache = clearAudioCache;
 }

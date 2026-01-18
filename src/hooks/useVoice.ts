@@ -34,6 +34,13 @@ export function useVoice({ enabled }: UseVoiceOptions) {
 
           // Check cache first
           let audioBlob = await getCachedAudio(text);
+
+          // Ignore cached blobs that are too small (likely corrupt)
+          if (audioBlob && audioBlob.size < 1000) {
+            console.warn('[TTS] Cached blob too small, ignoring:', audioBlob.size);
+            audioBlob = null;
+          }
+
           console.log('[TTS] Cache hit:', !!audioBlob);
 
           if (!audioBlob) {
@@ -61,8 +68,12 @@ export function useVoice({ enabled }: UseVoiceOptions) {
             audioBlob = await response.blob();
             console.log('[TTS] Got audio blob, size:', audioBlob.size);
 
-            // Cache for next time
-            await setCachedAudio(text, audioBlob);
+            // Only cache if we have a valid audio blob (at least 1KB)
+            if (audioBlob.size > 1000) {
+              await setCachedAudio(text, audioBlob);
+            } else {
+              console.warn('[TTS] Audio blob too small, not caching:', audioBlob.size);
+            }
           }
 
           const audioUrl = URL.createObjectURL(audioBlob);
