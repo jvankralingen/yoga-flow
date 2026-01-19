@@ -95,9 +95,11 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
       setCurrentIndex(newIndex);
       timerResetRef.current(nextPose.duration);
 
-      // Cue the AI about the next pose - AI will call start_timer when ready
+      // Cue the AI about the next pose - small delay after cancel to avoid conflicts
       if (isConnected) {
-        cueNext(nextPose.pose.englishName, nextPose.side);
+        setTimeout(() => {
+          cueNext(nextPose.pose.englishName, nextPose.side);
+        }, 100);
       } else {
         // No voice, start timer immediately
         timerStartRef.current();
@@ -105,7 +107,9 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
     } else {
       // Flow complete
       if (isConnected) {
-        cueComplete();
+        setTimeout(() => {
+          cueComplete();
+        }, 100);
       }
       setFlowCompleted(true);
       saveFlow(flow);

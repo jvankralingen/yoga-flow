@@ -44,7 +44,8 @@ Wanneer je "[POSE: naam]" ontvangt:
 - Roep start_timer aan
 
 Wanneer je "[HALFWAY]" ontvangt:
-- Geef een korte aanmoediging ("Goed zo, blijf ademen" of iets dergelijks)
+- Geef een korte aanmoediging OF begeleid één ademhaling ("Adem diep in... en langzaam uit...")
+- Wissel af: soms aanmoediging, soms ademhaling, soms allebei kort
 - GEEN start_timer nodig (timer loopt al)
 
 Wanneer je "[LAST_BREATH]" ontvangt:
