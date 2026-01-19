@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Flow } from '@/lib/types';
-import { useTimer } from '@/hooks/useTimer';
 import { useRealtimeYoga } from '@/hooks/useRealtimeYoga';
 import { PoseCard } from './PoseCard';
 import { saveFlow } from '@/lib/storage';
@@ -21,19 +20,9 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
   const currentPose = flow.poses[currentIndex];
   const isLastPose = currentIndex === flow.poses.length - 1;
 
-  // Refs to track what we've already cued
+  // Track if we've sent the start cue
   const startCuedRef = useRef(false);
-  const halfwayCuedRef = useRef(-1);
-  const lastBreathCuedRef = useRef(-1);
-
-  // Track if we're waiting to send the initial start cue
   const [pendingStartCue, setPendingStartCue] = useState(false);
-
-  // Timer control refs (will be updated after useTimer hook)
-  const timerResetRef = useRef<(time: number) => void>(() => {});
-  const timerStartRef = useRef<() => void>(() => {});
-  const timerPauseRef = useRef<() => void>(() => {});
-  const isSessionActiveRef = useRef(false);
 
   // Wake lock management to keep screen on
   const requestWakeLock = useCallback(async () => {
@@ -55,13 +44,29 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
     }
   }, []);
 
-  // Callback for when AI signals timer should start
-  const handleTimerStart = useCallback(() => {
-    if (isSessionActiveRef.current) {
-      console.log('[FlowPlayer] AI signaled timer start');
-      timerStartRef.current();
+  // Handle when AI signals pose is complete
+  const handlePoseComplete = useCallback(() => {
+    console.log('[FlowPlayer] AI signaled pose complete');
+
+    if (!isLastPose) {
+      const newIndex = currentIndex + 1;
+      const nextPose = flow.poses[newIndex];
+
+      setCurrentIndex(newIndex);
+
+      // AI will receive the NEXT cue and continue guiding
+      cueNextRef.current?.(nextPose.pose.englishName, nextPose.side);
+    } else {
+      // Flow complete
+      cueCompleteRef.current?.();
+      setFlowCompleted(true);
+      saveFlow(flow);
     }
-  }, []);
+  }, [isLastPose, flow, currentIndex]);
+
+  // Refs for cue functions to avoid stale closures
+  const cueNextRef = useRef<(poseName: string, side?: string) => void>(undefined);
+  const cueCompleteRef = useRef<() => void>(undefined);
 
   // Realtime yoga voice
   const {
@@ -72,103 +77,24 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
     disconnect,
     cancelResponse,
     cueStart,
-    cueHalfway,
-    cueLastBreath,
     cueNext,
     cueComplete,
   } = useRealtimeYoga({
     flow,
-    onTimerStart: handleTimerStart,
+    onPoseComplete: handlePoseComplete,
   });
 
-  // Handle pose completion
-  const handleComplete = useCallback(() => {
-    // Cancel any ongoing speech first (e.g., if halfway cue is still playing)
-    if (isConnected) {
-      cancelResponse();
-    }
+  // Keep refs updated
+  cueNextRef.current = cueNext;
+  cueCompleteRef.current = cueComplete;
 
-    if (!isLastPose) {
-      const newIndex = currentIndex + 1;
-      const nextPose = flow.poses[newIndex];
-
-      setCurrentIndex(newIndex);
-      timerResetRef.current(nextPose.duration);
-
-      // Cue the AI about the next pose - small delay after cancel to avoid conflicts
-      if (isConnected) {
-        setTimeout(() => {
-          cueNext(nextPose.pose.englishName, nextPose.side);
-        }, 100);
-      } else {
-        // No voice, start timer immediately
-        timerStartRef.current();
-      }
-    } else {
-      // Flow complete
-      if (isConnected) {
-        setTimeout(() => {
-          cueComplete();
-        }, 100);
-      }
-      setFlowCompleted(true);
-      saveFlow(flow);
-    }
-  }, [isLastPose, flow, currentIndex, isConnected, cancelResponse, cueNext, cueComplete]);
-
-  // Timer hook
-  const {
-    timeLeft,
-    isRunning,
-    breathPhase,
-    progress,
-    toggle,
-    reset,
-    start,
-    pause,
-  } = useTimer({
-    initialTime: currentPose.duration,
-    mode: flow.timerMode,
-    breathPace: flow.breathPace,
-    onComplete: handleComplete,
-    autoStart: false,
-  });
-
-  // Keep refs updated for use in callbacks
-  timerResetRef.current = reset;
-  timerStartRef.current = start;
-  timerPauseRef.current = pause;
-  isSessionActiveRef.current = isSessionActive;
-
-  // Send halfway cue (at 50% of pose duration)
-  useEffect(() => {
-    if (!isRunning || !isConnected) return;
-
-    const halfway = Math.floor(currentPose.duration / 2);
-    if (timeLeft === halfway && halfwayCuedRef.current !== currentIndex) {
-      halfwayCuedRef.current = currentIndex;
-      cueHalfway();
-    }
-  }, [timeLeft, isRunning, isConnected, currentPose.duration, currentIndex, cueHalfway]);
-
-  // Send last breath cue
-  useEffect(() => {
-    if (!isRunning || !isConnected) return;
-
-    if (flow.timerMode === 'breaths' && timeLeft === 1 && lastBreathCuedRef.current !== currentIndex) {
-      lastBreathCuedRef.current = currentIndex;
-      cueLastBreath();
-    }
-  }, [timeLeft, isRunning, isConnected, flow.timerMode, currentIndex, cueLastBreath]);
-
-  // Send start cue when connection is established and we're waiting for it
+  // Send start cue when connection is established
   useEffect(() => {
     if (pendingStartCue && isConnected && !startCuedRef.current) {
       console.log('[FlowPlayer] Connection ready, sending start cue');
       startCuedRef.current = true;
       setPendingStartCue(false);
       cueStart(currentPose.pose.englishName);
-      // AI will call start_timer when ready
     }
   }, [pendingStartCue, isConnected, cueStart, currentPose.pose.englishName]);
 
@@ -177,14 +103,12 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
     if (!isSessionActive) {
       // Starting the session
       setIsSessionActive(true);
-      isSessionActiveRef.current = true; // Update ref immediately for callbacks
 
       // Keep screen on during session
       requestWakeLock();
 
       // Connect to voice if not connected
       if (!isConnected && voiceStatus !== 'connecting') {
-        // Set pending flag - the effect will send the cue when connected
         setPendingStartCue(true);
         await connect();
       } else if (isConnected) {
@@ -192,51 +116,43 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
         if (!startCuedRef.current) {
           startCuedRef.current = true;
           cueStart(currentPose.pose.englishName);
-          // AI will call start_timer when ready
         }
       }
     } else {
       // Pausing the session
       setIsSessionActive(false);
-      isSessionActiveRef.current = false; // Update ref immediately for callbacks
 
-      // Cancel any ongoing speech immediately
+      // Cancel any ongoing speech
       if (isConnected) {
         cancelResponse();
       }
 
       releaseWakeLock();
-      pause();
     }
-  }, [isSessionActive, isConnected, voiceStatus, connect, cueStart, currentPose.pose.englishName, pause, cancelResponse, requestWakeLock, releaseWakeLock]);
+  }, [isSessionActive, isConnected, voiceStatus, connect, cueStart, currentPose.pose.englishName, cancelResponse, requestWakeLock, releaseWakeLock]);
 
-  // Navigate to previous pose
+  // Navigate to previous pose manually
   const goToPrevious = useCallback(() => {
     if (currentIndex > 0) {
       const newIndex = currentIndex - 1;
       const prevPose = flow.poses[newIndex];
 
-      // Cancel any ongoing speech first
       if (isConnected) {
         cancelResponse();
       }
 
       setCurrentIndex(newIndex);
-      reset(prevPose.duration);
 
       if (isConnected && isSessionActive) {
-        // AI will call start_timer when ready
-        cueNext(prevPose.pose.englishName, prevPose.side);
-      } else if (isSessionActive) {
-        // No voice connection, start timer immediately
-        start();
+        setTimeout(() => {
+          cueNext(prevPose.pose.englishName, prevPose.side);
+        }, 100);
       }
     }
-  }, [currentIndex, flow.poses, reset, isConnected, cancelResponse, cueNext, isSessionActive, start]);
+  }, [currentIndex, flow.poses, isConnected, cancelResponse, cueNext, isSessionActive]);
 
-  // Navigate to next pose
+  // Navigate to next pose manually (skip)
   const goToNext = useCallback(() => {
-    // Cancel any ongoing speech first
     if (isConnected) {
       cancelResponse();
     }
@@ -246,23 +162,22 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
       const nextPose = flow.poses[newIndex];
 
       setCurrentIndex(newIndex);
-      reset(nextPose.duration);
 
       if (isConnected && isSessionActive) {
-        // AI will call start_timer when ready
-        cueNext(nextPose.pose.englishName, nextPose.side);
-      } else if (isSessionActive) {
-        // No voice connection, start timer immediately
-        start();
+        setTimeout(() => {
+          cueNext(nextPose.pose.englishName, nextPose.side);
+        }, 100);
       }
     } else {
       if (isConnected) {
-        cueComplete();
+        setTimeout(() => {
+          cueComplete();
+        }, 100);
       }
       saveFlow(flow);
       router.push('/archive');
     }
-  }, [currentIndex, isLastPose, flow, reset, isConnected, cancelResponse, cueNext, cueComplete, isSessionActive, start, router]);
+  }, [currentIndex, isLastPose, flow, isConnected, cancelResponse, cueNext, cueComplete, isSessionActive, router]);
 
   const finishFlow = () => {
     releaseWakeLock();
@@ -313,10 +228,18 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
   }
 
   const getStatusIndicator = () => {
-    if (voiceStatus === 'connected') {
+    if (isSpeaking) {
       return (
         <span className="flex items-center gap-1 text-sm text-green-600">
           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          Spreekt...
+        </span>
+      );
+    }
+    if (voiceStatus === 'connected') {
+      return (
+        <span className="flex items-center gap-1 text-sm text-green-600">
+          <span className="w-2 h-2 bg-green-500 rounded-full" />
           Live
         </span>
       );
@@ -367,18 +290,19 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
         </div>
       </div>
 
-      {/* Main content */}
+      {/* Main content - simplified PoseCard without timer */}
       <div className="flex-1 overflow-hidden">
         <PoseCard
           flowPose={currentPose}
           timerMode={flow.timerMode}
           breathPace={flow.breathPace}
-          timeLeft={timeLeft}
-          breathPhase={breathPhase}
-          isRunning={isRunning}
+          timeLeft={0}
+          breathPhase="inhale"
+          isRunning={false}
           isSessionActive={isSessionActive}
-          progress={progress}
+          progress={currentIndex / flow.poses.length}
           onToggle={handleStart}
+          hideTimer={true}
         />
       </div>
 

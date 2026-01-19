@@ -6,17 +6,17 @@ import { buildYogaInstructions } from '@/lib/yogaInstructions';
 
 interface UseRealtimeYogaOptions {
   flow: Flow;
-  onTimerStart?: () => void;
+  onPoseComplete?: () => void;
 }
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
-// Tool definition for AI to signal timer start
+// Tool definition for AI to signal pose completion
 const TOOLS = [
   {
     type: 'function',
-    name: 'start_timer',
-    description: 'Call this function IMMEDIATELY after you finish speaking to start the pose timer. You MUST call this after every cue response.',
+    name: 'pose_complete',
+    description: 'Call this function when you want the student to move to the next pose. YOU control the timing of the session. After introducing a pose, guide the student through it with breathing cues and encouragement, then call this function when ready to move on.',
     parameters: {
       type: 'object',
       properties: {},
@@ -25,7 +25,7 @@ const TOOLS = [
   },
 ];
 
-export function useRealtimeYoga({ flow, onTimerStart }: UseRealtimeYogaOptions) {
+export function useRealtimeYoga({ flow, onPoseComplete }: UseRealtimeYogaOptions) {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [isSpeaking, setIsSpeaking] = useState(false);
 
@@ -35,9 +35,9 @@ export function useRealtimeYoga({ flow, onTimerStart }: UseRealtimeYogaOptions) 
   const audioContextRef = useRef<AudioContext | null>(null);
 
   // Refs for callbacks to avoid stale closures
-  const onTimerStartRef = useRef(onTimerStart);
+  const onPoseCompleteRef = useRef(onPoseComplete);
   const isSpeakingRef = useRef(false);
-  onTimerStartRef.current = onTimerStart;
+  onPoseCompleteRef.current = onPoseComplete;
 
   // Build instructions
   const instructions = buildYogaInstructions(flow);
@@ -161,9 +161,9 @@ export function useRealtimeYoga({ flow, onTimerStart }: UseRealtimeYogaOptions) 
           const functionName = data.name;
           console.log('[Realtime] Function call:', functionName);
 
-          if (functionName === 'start_timer') {
-            console.log('[Realtime] AI called start_timer - triggering timer');
-            onTimerStartRef.current?.();
+          if (functionName === 'pose_complete') {
+            console.log('[Realtime] AI called pose_complete - moving to next pose');
+            onPoseCompleteRef.current?.();
 
             // Send function call output to acknowledge
             if (dataChannelRef.current?.readyState === 'open') {
