@@ -81,7 +81,7 @@ export function useRealtimeYoga({ flow, onTimerStart }: UseRealtimeYogaOptions) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           instructions,
-          voice: 'ballad',
+          voice: 'sage',
           tools: TOOLS,
         }),
       });
