@@ -12,6 +12,7 @@ interface PoseCardProps {
   isSessionActive: boolean;
   progress: number;
   onToggle: () => void;
+  hideTimer?: boolean;
 }
 
 export function PoseCard({
@@ -24,6 +25,7 @@ export function PoseCard({
   isSessionActive,
   progress,
   onToggle,
+  hideTimer = false,
 }: PoseCardProps) {
   const { pose, side } = flowPose;
 
@@ -126,41 +128,43 @@ export function PoseCard({
             </p>
           </div>
 
-          {/* Timer display - compact */}
-          <div
-            className="bg-indigo-50 rounded-xl px-4 py-2 text-center cursor-pointer min-w-[100px]"
-            onClick={onToggle}
-          >
-            {timerMode === 'breaths' ? (
-              <div>
-                <div
-                  className={`text-2xl font-bold transition-all duration-500 ${
-                    breathPhase === 'inhale' ? 'text-indigo-600' : 'text-indigo-400'
-                  }`}
-                >
-                  {timeLeft}
+          {/* Timer display - compact (hidden in realtime mode) */}
+          {!hideTimer && (
+            <div
+              className="bg-indigo-50 rounded-xl px-4 py-2 text-center cursor-pointer min-w-[100px]"
+              onClick={onToggle}
+            >
+              {timerMode === 'breaths' ? (
+                <div>
+                  <div
+                    className={`text-2xl font-bold transition-all duration-500 ${
+                      breathPhase === 'inhale' ? 'text-indigo-600' : 'text-indigo-400'
+                    }`}
+                  >
+                    {timeLeft}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {isSessionActive ? (
+                      <span className={breathPhase === 'inhale' ? 'text-indigo-600' : 'text-indigo-400'}>
+                        {breathPhase === 'inhale' ? '↑ In' : '↓ Uit'}
+                      </span>
+                    ) : (
+                      'Start'
+                    )}
+                  </div>
                 </div>
-                <div className="text-xs text-gray-500">
-                  {isSessionActive ? (
-                    <span className={breathPhase === 'inhale' ? 'text-indigo-600' : 'text-indigo-400'}>
-                      {breathPhase === 'inhale' ? '↑ In' : '↓ Uit'}
-                    </span>
-                  ) : (
-                    'Start'
-                  )}
+              ) : (
+                <div>
+                  <div className="text-2xl font-bold text-indigo-600">
+                    {formatTime(timeLeft)}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {isSessionActive ? 'Pauze' : 'Start'}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div>
-                <div className="text-2xl font-bold text-indigo-600">
-                  {formatTime(timeLeft)}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {isSessionActive ? 'Pauze' : 'Start'}
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Description */}
