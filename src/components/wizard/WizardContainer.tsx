@@ -78,24 +78,32 @@ export function WizardContainer() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white flex flex-col">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: 'var(--background)' }}
+    >
       {/* Progress indicator */}
       <div className="px-4 pt-6 pb-4">
         <div className="flex justify-center gap-2 mb-2">
           {[1, 2, 3].map((step) => (
             <div
               key={step}
-              className={`h-2 rounded-full transition-all ${
-                step === state.step
-                  ? 'w-8 bg-indigo-600'
+              className="h-2 rounded-full transition-all"
+              style={{
+                width: step === state.step ? '2rem' : '0.5rem',
+                backgroundColor: step === state.step
+                  ? 'var(--primary)'
                   : step < state.step
-                  ? 'w-2 bg-indigo-400'
-                  : 'w-2 bg-gray-300'
-              }`}
+                  ? 'var(--primary-light)'
+                  : 'var(--stone)',
+              }}
             />
           ))}
         </div>
-        <p className="text-center text-sm text-gray-500">
+        <p
+          className="text-center text-sm"
+          style={{ color: 'var(--bark)' }}
+        >
           Stap {state.step} van {TOTAL_STEPS}
         </p>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { FlowPose, TimerMode, BreathPace, BREATH_PACE_SECONDS } from '@/lib/types';
+import { FlowPose, TimerMode, BreathPace } from '@/lib/types';
 
 interface PoseCardProps {
   flowPose: FlowPose;
@@ -17,89 +17,46 @@ interface PoseCardProps {
 
 export function PoseCard({
   flowPose,
-  timerMode,
-  breathPace,
-  timeLeft,
-  breathPhase,
-  isRunning,
   isSessionActive,
-  progress,
-  onToggle,
   hideTimer = false,
 }: PoseCardProps) {
   const { pose, side } = flowPose;
-
-  // Calculate breath phase duration for animations (half of full breath cycle)
-  const breathPhaseDuration = (BREATH_PACE_SECONDS[breathPace] / 2) * 1000;
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
-  };
 
   const getSideLabel = () => {
     if (!side) return null;
     return side === 'left' ? 'Links' : 'Rechts';
   };
 
-  // Determine if breathing animation should be active
-  const isBreathing = timerMode === 'breaths' && isRunning;
-
   return (
     <div className="flex flex-col h-full">
-      {/* Pose image area - full width on mobile */}
+      {/* Pose image area */}
       <div
         className="flex-1 flex items-center justify-center relative overflow-hidden"
         style={{
-          background: 'linear-gradient(to bottom, rgb(224, 231, 255), rgb(238, 242, 255))',
+          background: 'linear-gradient(to bottom, #E8E2D9, #F7F4EF)',
         }}
       >
-        {/* Breathing overlay - fades in/out for smooth transition */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'linear-gradient(to bottom, rgb(199, 210, 254), rgb(212, 221, 254))',
-            opacity: isBreathing && breathPhase === 'exhale' ? 1 : 0,
-            transition: `opacity ${breathPhaseDuration}ms ease-in-out`,
-          }}
-        />
-
-        {/* Progress bar at bottom */}
-        <div
-          className="absolute bottom-0 left-0 h-1 bg-indigo-500 transition-all duration-300"
-          style={{
-            width: `${progress * 100}%`,
-          }}
-        />
-
         {/* Side indicator */}
         {side && (
-          <span className="absolute top-4 left-4 z-20 px-4 py-1 bg-indigo-600 text-white rounded-full text-sm font-medium">
+          <span
+            className="absolute top-4 left-4 z-20 px-4 py-1.5 rounded-full text-sm font-medium text-white"
+            style={{ backgroundColor: 'var(--primary)' }}
+          >
             {getSideLabel()}
           </span>
         )}
 
-        {/* Pose image with breathing effect - fixed height container */}
+        {/* Pose image */}
         <div className="relative z-10 w-full flex items-center justify-center" style={{ height: '380px' }}>
           <div
             className={`flex items-center justify-center ${side === 'left' ? 'scale-x-[-1]' : ''}`}
             style={{
-              width: isBreathing
-                ? breathPhase === 'inhale' ? '340px' : '300px'
-                : '340px',
-              height: isBreathing
-                ? breathPhase === 'inhale' ? '340px' : '300px'
-                : '340px',
+              width: '320px',
+              height: '320px',
               borderRadius: '50%',
               overflow: 'hidden',
-              background: 'rgba(255, 255, 255, 0.5)',
-              boxShadow: isBreathing
-                ? breathPhase === 'inhale'
-                  ? '0 0 60px 20px rgba(165, 180, 252, 0.5), 0 0 100px 40px rgba(199, 210, 254, 0.3)'
-                  : '0 0 30px 10px rgba(165, 180, 252, 0.3), 0 0 50px 20px rgba(199, 210, 254, 0.15)'
-                : '0 0 40px 15px rgba(165, 180, 252, 0.4), 0 0 70px 30px rgba(199, 210, 254, 0.2)',
-              transition: `width ${breathPhaseDuration}ms ease-in-out, height ${breathPhaseDuration}ms ease-in-out, box-shadow ${breathPhaseDuration}ms ease-in-out`,
+              background: 'rgba(255, 255, 255, 0.7)',
+              boxShadow: '0 8px 40px rgba(107, 142, 107, 0.15), 0 4px 20px rgba(0, 0, 0, 0.05)',
             }}
           >
             <img
@@ -116,59 +73,55 @@ export function PoseCard({
         </div>
       </div>
 
-      {/* Pose info - compact */}
-      <div className="px-4 py-3 bg-white">
-        <div className="flex items-center justify-between mb-2">
+      {/* Pose info card */}
+      <div
+        className="mx-4 -mt-6 relative z-20 rounded-3xl p-5"
+        style={{
+          backgroundColor: 'var(--cream)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+        }}
+      >
+        <div className="flex items-start justify-between mb-3">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">
+            <h2
+              className="text-2xl font-bold"
+              style={{ color: 'var(--earth)' }}
+            >
               {pose.englishName}
             </h2>
-            <p className="text-indigo-600 text-sm italic">
+            <p
+              className="text-sm italic"
+              style={{ color: 'var(--primary)' }}
+            >
               {pose.sanskritName}
             </p>
           </div>
 
-          {/* Timer display - compact (hidden in realtime mode) */}
-          {!hideTimer && (
+          {/* Session status indicator */}
+          {isSessionActive && !hideTimer && (
             <div
-              className="bg-indigo-50 rounded-xl px-4 py-2 text-center cursor-pointer min-w-[100px]"
-              onClick={onToggle}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full"
+              style={{ backgroundColor: 'var(--sand)' }}
             >
-              {timerMode === 'breaths' ? (
-                <div>
-                  <div
-                    className={`text-2xl font-bold transition-all duration-500 ${
-                      breathPhase === 'inhale' ? 'text-indigo-600' : 'text-indigo-400'
-                    }`}
-                  >
-                    {timeLeft}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {isSessionActive ? (
-                      <span className={breathPhase === 'inhale' ? 'text-indigo-600' : 'text-indigo-400'}>
-                        {breathPhase === 'inhale' ? '↑ In' : '↓ Uit'}
-                      </span>
-                    ) : (
-                      'Start'
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <div className="text-2xl font-bold text-indigo-600">
-                    {formatTime(timeLeft)}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {isSessionActive ? 'Pauze' : 'Start'}
-                  </div>
-                </div>
-              )}
+              <span
+                className="w-2 h-2 rounded-full animate-pulse"
+                style={{ backgroundColor: 'var(--primary)' }}
+              />
+              <span
+                className="text-sm font-medium"
+                style={{ color: 'var(--bark)' }}
+              >
+                Actief
+              </span>
             </div>
           )}
         </div>
 
         {/* Description */}
-        <p className="text-gray-600 text-sm leading-relaxed">
+        <p
+          className="text-sm leading-relaxed"
+          style={{ color: 'var(--bark)' }}
+        >
           {pose.description}
         </p>
       </div>

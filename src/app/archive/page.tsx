@@ -3,25 +3,41 @@ import { FlowList } from '@/components/archive/FlowList';
 
 export default function ArchivePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white">
+    <div
+      className="min-h-screen"
+      style={{ backgroundColor: 'var(--background)' }}
+    >
       {/* Header */}
       <header className="px-4 pt-6 pb-4">
         <div className="flex items-center justify-between mb-4">
           <Link
             href="/"
-            className="text-indigo-600 hover:text-indigo-800 font-medium"
+            className="font-medium flex items-center gap-1"
+            style={{ color: 'var(--primary)' }}
           >
-            ← Terug
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+            Terug
           </Link>
           <Link
             href="/"
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors"
+            className="px-4 py-2 text-white rounded-xl text-sm font-medium transition-colors"
+            style={{
+              backgroundColor: 'var(--primary)',
+              boxShadow: '0 2px 8px rgba(107, 142, 107, 0.2)',
+            }}
           >
             + Nieuwe Flow
           </Link>
         </div>
-        <h1 className="text-2xl font-bold text-gray-800">Mijn Flows</h1>
-        <p className="text-gray-500">Je opgeslagen yoga sessies</p>
+        <h1
+          className="text-2xl font-bold"
+          style={{ color: 'var(--earth)' }}
+        >
+          Mijn Flows
+        </h1>
+        <p style={{ color: 'var(--bark)' }}>Je opgeslagen yoga sessies</p>
       </header>
 
       {/* Flow list */}

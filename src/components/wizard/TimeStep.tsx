@@ -13,10 +13,13 @@ export function TimeStep({ value, onChange, onNext, onTestMode }: TimeStepProps)
   return (
     <div className="flex flex-col items-center gap-8 px-4">
       <div className="text-center">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+        <h2
+          className="text-2xl font-semibold mb-2"
+          style={{ color: 'var(--earth)' }}
+        >
           Hoeveel tijd heb je?
         </h2>
-        <p className="text-gray-500">
+        <p style={{ color: 'var(--bark)' }}>
           Kies de duur van je yoga sessie
         </p>
       </div>
@@ -26,13 +29,15 @@ export function TimeStep({ value, onChange, onNext, onTestMode }: TimeStepProps)
           <button
             key={minutes}
             onClick={() => onChange(minutes)}
-            className={`
-              py-4 px-2 rounded-2xl text-lg font-medium transition-all
-              ${value === minutes
-                ? 'bg-indigo-600 text-white shadow-lg scale-105'
-                : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-indigo-300'
-              }
-            `}
+            className="py-4 px-2 rounded-2xl text-lg font-medium transition-all"
+            style={{
+              backgroundColor: value === minutes ? 'var(--primary)' : 'var(--cream)',
+              color: value === minutes ? 'white' : 'var(--earth)',
+              boxShadow: value === minutes
+                ? '0 4px 14px rgba(107, 142, 107, 0.3)'
+                : '0 2px 8px rgba(0, 0, 0, 0.04)',
+              transform: value === minutes ? 'scale(1.05)' : 'scale(1)',
+            }}
           >
             {minutes} min
           </button>
@@ -42,7 +47,11 @@ export function TimeStep({ value, onChange, onNext, onTestMode }: TimeStepProps)
       {value && (
         <button
           onClick={onNext}
-          className="w-full max-w-sm py-4 bg-indigo-600 text-white rounded-2xl font-semibold text-lg hover:bg-indigo-700 transition-colors shadow-lg"
+          className="w-full max-w-sm py-4 text-white rounded-2xl font-semibold text-lg transition-all hover:opacity-90"
+          style={{
+            backgroundColor: 'var(--primary)',
+            boxShadow: '0 4px 14px rgba(107, 142, 107, 0.3)',
+          }}
         >
           Volgende
         </button>
@@ -51,7 +60,11 @@ export function TimeStep({ value, onChange, onNext, onTestMode }: TimeStepProps)
       {onTestMode && (
         <button
           onClick={onTestMode}
-          className="w-full max-w-sm py-3 bg-orange-500 text-white rounded-2xl font-semibold text-sm hover:bg-orange-600 transition-colors"
+          className="w-full max-w-sm py-3 rounded-2xl font-semibold text-sm transition-colors"
+          style={{
+            backgroundColor: 'var(--accent)',
+            color: 'white',
+          }}
         >
           Test Mode (5 poses, 15s each)
         </button>

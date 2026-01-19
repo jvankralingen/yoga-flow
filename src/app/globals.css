@@ -1,8 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --background: #F5F3FF;
-  --foreground: #171717;
+  /* Warm, organic color palette */
+  --background: #F7F4EF;
+  --foreground: #3D3529;
+
+  /* Primary - Sage green */
+  --primary: #6B8E6B;
+  --primary-light: #8BAD8B;
+  --primary-dark: #4A6B4A;
+
+  /* Accent - Warm terracotta */
+  --accent: #C4956A;
+  --accent-light: #E5C4A8;
+
+  /* Neutrals */
+  --cream: #FAF8F5;
+  --sand: #E8E2D9;
+  --stone: #D4CCC0;
+  --bark: #8B7E6A;
+  --earth: #5C5345;
 }
 
 @theme inline {

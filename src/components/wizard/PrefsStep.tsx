@@ -70,44 +70,48 @@ export function PrefsStep({
   };
 
   return (
-    <div className="flex flex-col items-center gap-8 px-4">
+    <div className="flex flex-col items-center gap-6 px-4">
       <div className="text-center">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+        <h2
+          className="text-2xl font-semibold mb-2"
+          style={{ color: 'var(--earth)' }}
+        >
           Voorkeuren
         </h2>
-        <p className="text-gray-500">
+        <p style={{ color: 'var(--bark)' }}>
           Pas je sessie aan naar jouw wensen
         </p>
       </div>
 
       {/* Timer Mode */}
       <div className="w-full max-w-sm">
-        <label className="block text-sm font-medium text-gray-600 mb-3">
+        <label
+          className="block text-sm font-medium mb-3"
+          style={{ color: 'var(--bark)' }}
+        >
           Timer modus
         </label>
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => onTimerModeChange('seconds')}
-            className={`
-              py-4 px-3 rounded-2xl text-base font-medium transition-all flex flex-col items-center gap-2
-              ${timerMode === 'seconds'
-                ? 'bg-indigo-600 text-white shadow-lg'
-                : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-indigo-300'
-              }
-            `}
+            className="py-4 px-3 rounded-2xl text-base font-medium transition-all flex flex-col items-center gap-2"
+            style={{
+              backgroundColor: timerMode === 'seconds' ? 'var(--primary)' : 'var(--cream)',
+              color: timerMode === 'seconds' ? 'white' : 'var(--earth)',
+              boxShadow: timerMode === 'seconds' ? '0 4px 14px rgba(107, 142, 107, 0.3)' : '0 2px 8px rgba(0, 0, 0, 0.04)',
+            }}
           >
             <span className="text-2xl">⏱️</span>
             <span>Seconden</span>
           </button>
           <button
             onClick={() => onTimerModeChange('breaths')}
-            className={`
-              py-4 px-3 rounded-2xl text-base font-medium transition-all flex flex-col items-center gap-2
-              ${timerMode === 'breaths'
-                ? 'bg-indigo-600 text-white shadow-lg'
-                : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-indigo-300'
-              }
-            `}
+            className="py-4 px-3 rounded-2xl text-base font-medium transition-all flex flex-col items-center gap-2"
+            style={{
+              backgroundColor: timerMode === 'breaths' ? 'var(--primary)' : 'var(--cream)',
+              color: timerMode === 'breaths' ? 'white' : 'var(--earth)',
+              boxShadow: timerMode === 'breaths' ? '0 4px 14px rgba(107, 142, 107, 0.3)' : '0 2px 8px rgba(0, 0, 0, 0.04)',
+            }}
           >
             <span className="text-2xl">🌬️</span>
             <span>Ademhalingen</span>
@@ -118,7 +122,10 @@ export function PrefsStep({
       {/* Breath Pace - only show when breaths mode is selected */}
       {timerMode === 'breaths' && (
         <div className="w-full max-w-sm">
-          <label className="block text-sm font-medium text-gray-600 mb-3">
+          <label
+            className="block text-sm font-medium mb-3"
+            style={{ color: 'var(--bark)' }}
+          >
             Ademhalingstempo
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -126,13 +133,12 @@ export function PrefsStep({
               <button
                 key={pace}
                 onClick={() => onBreathPaceChange(pace)}
-                className={`
-                  py-3 px-2 rounded-xl text-sm font-medium transition-all
-                  ${breathPace === pace
-                    ? 'bg-indigo-600 text-white shadow-lg'
-                    : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-indigo-300'
-                  }
-                `}
+                className="py-3 px-2 rounded-xl text-sm font-medium transition-all"
+                style={{
+                  backgroundColor: breathPace === pace ? 'var(--primary)' : 'var(--cream)',
+                  color: breathPace === pace ? 'white' : 'var(--earth)',
+                  boxShadow: breathPace === pace ? '0 4px 14px rgba(107, 142, 107, 0.3)' : '0 2px 8px rgba(0, 0, 0, 0.04)',
+                }}
               >
                 {BREATH_PACE_LABELS[pace]}
               </button>
@@ -143,36 +149,41 @@ export function PrefsStep({
 
       {/* Voice */}
       <div className="w-full max-w-sm">
-        <label className="block text-sm font-medium text-gray-600 mb-3">
+        <label
+          className="block text-sm font-medium mb-3"
+          style={{ color: 'var(--bark)' }}
+        >
           Stem begeleiding
         </label>
         <button
           onClick={() => onVoiceEnabledChange(!voiceEnabled)}
-          className={`
-            w-full py-4 px-4 rounded-2xl text-base font-medium transition-all flex items-center justify-between
-            ${voiceEnabled
-              ? 'bg-indigo-600 text-white shadow-lg'
-              : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-indigo-300'
-            }
-          `}
+          className="w-full py-4 px-4 rounded-2xl text-base font-medium transition-all flex items-center justify-between"
+          style={{
+            backgroundColor: voiceEnabled ? 'var(--primary)' : 'var(--cream)',
+            color: voiceEnabled ? 'white' : 'var(--earth)',
+            boxShadow: voiceEnabled ? '0 4px 14px rgba(107, 142, 107, 0.3)' : '0 2px 8px rgba(0, 0, 0, 0.04)',
+          }}
         >
           <div className="flex items-center gap-3">
             <span className="text-2xl">🔊</span>
             <div className="text-left">
               <span className="block">Spraakbegeleiding</span>
-              <span className={`text-xs ${voiceEnabled ? 'text-indigo-200' : 'text-gray-500'}`}>
-                Hoort poses en ademhalingsinstructies
+              <span
+                className="text-xs"
+                style={{ color: voiceEnabled ? 'rgba(255,255,255,0.7)' : 'var(--bark)' }}
+              >
+                AI yoga instructeur
               </span>
             </div>
           </div>
-          <div className={`
-            w-12 h-7 rounded-full transition-colors relative
-            ${voiceEnabled ? 'bg-indigo-400' : 'bg-gray-300'}
-          `}>
-            <div className={`
-              absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform
-              ${voiceEnabled ? 'translate-x-6' : 'translate-x-1'}
-            `} />
+          <div
+            className="w-12 h-7 rounded-full transition-colors relative"
+            style={{ backgroundColor: voiceEnabled ? 'var(--primary-light)' : 'var(--stone)' }}
+          >
+            <div
+              className="absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform"
+              style={{ transform: voiceEnabled ? 'translateX(1.25rem)' : 'translateX(0.25rem)' }}
+            />
           </div>
         </button>
 
@@ -181,17 +192,21 @@ export function PrefsStep({
           <button
             onClick={testAudio}
             disabled={audioTestStatus === 'playing'}
-            className={`
-              mt-3 w-full py-3 px-4 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2
-              ${audioTestStatus === 'success'
-                ? 'bg-green-100 text-green-700 border-2 border-green-300'
+            className="mt-3 w-full py-3 px-4 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2"
+            style={{
+              backgroundColor: audioTestStatus === 'success'
+                ? '#D1FAE5'
                 : audioTestStatus === 'error'
-                ? 'bg-red-100 text-red-700 border-2 border-red-300'
+                ? '#FEE2E2'
                 : audioTestStatus === 'playing'
-                ? 'bg-indigo-100 text-indigo-600 border-2 border-indigo-300'
-                : 'bg-gray-100 text-gray-700 border-2 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
-              }
-            `}
+                ? 'var(--sand)'
+                : 'var(--cream)',
+              color: audioTestStatus === 'success'
+                ? '#065F46'
+                : audioTestStatus === 'error'
+                ? '#991B1B'
+                : 'var(--earth)',
+            }}
           >
             {audioTestStatus === 'playing' && (
               <>
@@ -223,7 +238,10 @@ export function PrefsStep({
 
       {/* Difficulty */}
       <div className="w-full max-w-sm">
-        <label className="block text-sm font-medium text-gray-600 mb-3">
+        <label
+          className="block text-sm font-medium mb-3"
+          style={{ color: 'var(--bark)' }}
+        >
           Niveau
         </label>
         <div className="grid grid-cols-3 gap-2">
@@ -231,13 +249,12 @@ export function PrefsStep({
             <button
               key={diff}
               onClick={() => onDifficultyChange(diff)}
-              className={`
-                py-3 px-2 rounded-xl text-sm font-medium transition-all
-                ${difficulty === diff
-                  ? 'bg-indigo-600 text-white shadow-lg'
-                  : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-indigo-300'
-                }
-              `}
+              className="py-3 px-2 rounded-xl text-sm font-medium transition-all"
+              style={{
+                backgroundColor: difficulty === diff ? 'var(--primary)' : 'var(--cream)',
+                color: difficulty === diff ? 'white' : 'var(--earth)',
+                boxShadow: difficulty === diff ? '0 4px 14px rgba(107, 142, 107, 0.3)' : '0 2px 8px rgba(0, 0, 0, 0.04)',
+              }}
             >
               {DIFFICULTY_LABELS[diff]}
             </button>
@@ -248,13 +265,21 @@ export function PrefsStep({
       <div className="flex gap-3 w-full max-w-sm mt-4">
         <button
           onClick={onBack}
-          className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl font-semibold text-lg hover:bg-gray-200 transition-colors"
+          className="flex-1 py-4 rounded-2xl font-semibold text-lg transition-colors"
+          style={{
+            backgroundColor: 'var(--sand)',
+            color: 'var(--earth)',
+          }}
         >
           Terug
         </button>
         <button
           onClick={onStart}
-          className="flex-1 py-4 bg-green-600 text-white rounded-2xl font-semibold text-lg hover:bg-green-700 transition-colors shadow-lg"
+          className="flex-1 py-4 text-white rounded-2xl font-semibold text-lg transition-all"
+          style={{
+            backgroundColor: 'var(--primary)',
+            boxShadow: '0 4px 14px rgba(107, 142, 107, 0.3)',
+          }}
         >
           Start Flow
         </button>

@@ -20,6 +20,10 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
   const currentPose = flow.poses[currentIndex];
   const isLastPose = currentIndex === flow.poses.length - 1;
 
+  // Ref to track current index for callbacks (avoids stale closures)
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+
   // Track if we've sent the start cue
   const startCuedRef = useRef(false);
   const [pendingStartCue, setPendingStartCue] = useState(false);
@@ -46,10 +50,13 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
 
   // Handle when AI signals pose is complete
   const handlePoseComplete = useCallback(() => {
-    console.log('[FlowPlayer] AI signaled pose complete');
+    const idx = currentIndexRef.current;
+    const lastPose = idx === flow.poses.length - 1;
 
-    if (!isLastPose) {
-      const newIndex = currentIndex + 1;
+    console.log('[FlowPlayer] AI signaled pose complete, current index:', idx, 'isLast:', lastPose);
+
+    if (!lastPose) {
+      const newIndex = idx + 1;
       const nextPose = flow.poses[newIndex];
 
       setCurrentIndex(newIndex);
@@ -62,7 +69,7 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
       setFlowCompleted(true);
       saveFlow(flow);
     }
-  }, [isLastPose, flow, currentIndex]);
+  }, [flow]);
 
   // Refs for cue functions to avoid stale closures
   const cueNextRef = useRef<(poseName: string, side?: string) => void>(undefined);
@@ -196,19 +203,37 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
   // Show completion screen
   if (flowCompleted) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-indigo-100 to-white flex flex-col items-center justify-center p-6">
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-6"
+        style={{ backgroundColor: 'var(--background)' }}
+      >
         <div className="text-center">
-          <div className="text-6xl mb-6">🧘‍♀️</div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+          <div
+            className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: 'var(--sand)' }}
+          >
+            <span className="text-5xl">🧘‍♀️</span>
+          </div>
+          <h1
+            className="text-3xl font-bold mb-2"
+            style={{ color: 'var(--earth)' }}
+          >
             Goed gedaan!
           </h1>
-          <p className="text-gray-600 mb-8">
+          <p
+            className="mb-8"
+            style={{ color: 'var(--bark)' }}
+          >
             Je hebt de flow voltooid.
           </p>
           <div className="space-y-3">
             <button
               onClick={finishFlow}
-              className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-semibold text-lg hover:bg-indigo-700 transition-colors shadow-lg"
+              className="w-full py-4 text-white rounded-2xl font-semibold text-lg transition-all hover:opacity-90"
+              style={{
+                backgroundColor: 'var(--primary)',
+                boxShadow: '0 4px 14px rgba(107, 142, 107, 0.3)',
+              }}
             >
               Bekijk Archief
             </button>
@@ -217,7 +242,11 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
                 disconnect();
                 router.push('/');
               }}
-              className="w-full py-4 bg-gray-100 text-gray-700 rounded-2xl font-semibold text-lg hover:bg-gray-200 transition-colors"
+              className="w-full py-4 rounded-2xl font-semibold text-lg transition-colors"
+              style={{
+                backgroundColor: 'var(--sand)',
+                color: 'var(--earth)',
+              }}
             >
               Nieuwe Flow
             </button>
@@ -230,22 +259,28 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
   const getStatusIndicator = () => {
     if (isSpeaking) {
       return (
-        <span className="flex items-center gap-1 text-sm text-green-600">
-          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+        <span className="flex items-center gap-1.5 text-sm" style={{ color: 'var(--primary)' }}>
+          <span
+            className="w-2 h-2 rounded-full animate-pulse"
+            style={{ backgroundColor: 'var(--primary)' }}
+          />
           Spreekt...
         </span>
       );
     }
     if (voiceStatus === 'connected') {
       return (
-        <span className="flex items-center gap-1 text-sm text-green-600">
-          <span className="w-2 h-2 bg-green-500 rounded-full" />
+        <span className="flex items-center gap-1.5 text-sm" style={{ color: 'var(--primary)' }}>
+          <span
+            className="w-2 h-2 rounded-full"
+            style={{ backgroundColor: 'var(--primary)' }}
+          />
           Live
         </span>
       );
     }
     if (voiceStatus === 'connecting') {
-      return <span className="text-sm text-orange-500">Verbinden...</span>;
+      return <span className="text-sm" style={{ color: 'var(--accent)' }}>Verbinden...</span>;
     }
     if (voiceStatus === 'error') {
       return <span className="text-sm text-red-500">Fout</span>;
@@ -254,43 +289,59 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white flex flex-col">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: 'var(--background)' }}
+    >
       {/* Header */}
       <div className="px-4 pt-4 pb-2">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <button
             onClick={() => {
               disconnect();
               router.push('/');
             }}
-            className="text-gray-500 hover:text-gray-700 p-2"
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+            style={{ backgroundColor: 'var(--sand)', color: 'var(--bark)' }}
           >
-            ✕
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {getStatusIndicator()}
-            <span className="text-sm text-gray-500">
+            <span
+              className="text-sm font-medium px-3 py-1 rounded-full"
+              style={{ backgroundColor: 'var(--sand)', color: 'var(--bark)' }}
+            >
               {currentIndex + 1} / {flow.poses.length}
             </span>
           </div>
           <button
             onClick={goToNext}
-            className="text-indigo-600 hover:text-indigo-800 p-2 text-sm font-medium"
+            className="text-sm font-medium px-3 py-2 rounded-full transition-colors"
+            style={{ color: 'var(--primary)' }}
           >
             Skip
           </button>
         </div>
 
         {/* Progress bar */}
-        <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+        <div
+          className="h-1.5 rounded-full overflow-hidden"
+          style={{ backgroundColor: 'var(--sand)' }}
+        >
           <div
-            className="h-full bg-indigo-600 transition-all duration-300"
-            style={{ width: `${((currentIndex) / flow.poses.length) * 100}%` }}
+            className="h-full rounded-full transition-all duration-500"
+            style={{
+              width: `${((currentIndex) / flow.poses.length) * 100}%`,
+              backgroundColor: 'var(--primary)',
+            }}
           />
         </div>
       </div>
 
-      {/* Main content - simplified PoseCard without timer */}
+      {/* Main content */}
       <div className="flex-1 overflow-hidden">
         <PoseCard
           flowPose={currentPose}
@@ -312,26 +363,34 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
           <button
             onClick={goToPrevious}
             disabled={currentIndex === 0}
-            className="w-16 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-14 h-14 rounded-2xl font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+            style={{ backgroundColor: 'var(--sand)', color: 'var(--bark)' }}
           >
-            ←
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
           </button>
           <button
             onClick={handleStart}
             disabled={voiceStatus === 'connecting'}
-            className={`flex-1 py-3 rounded-xl font-semibold text-lg transition-colors shadow-lg disabled:opacity-50 ${
-              isSessionActive
-                ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-            }`}
+            className="flex-1 py-4 rounded-2xl font-semibold text-lg transition-all disabled:opacity-50 text-white"
+            style={{
+              backgroundColor: isSessionActive ? 'var(--accent)' : 'var(--primary)',
+              boxShadow: isSessionActive
+                ? '0 4px 14px rgba(196, 149, 106, 0.3)'
+                : '0 4px 14px rgba(107, 142, 107, 0.3)',
+            }}
           >
-            {voiceStatus === 'connecting' ? 'Verbinden...' : isSessionActive ? 'Pauzeer' : 'Start'}
+            {voiceStatus === 'connecting' ? 'Verbinden...' : isSessionActive ? 'Pauzeer' : 'Start Sessie'}
           </button>
           <button
             onClick={goToNext}
-            className="w-16 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+            className="w-14 h-14 rounded-2xl font-semibold transition-all flex items-center justify-center"
+            style={{ backgroundColor: 'var(--sand)', color: 'var(--bark)' }}
           >
-            →
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
           </button>
         </div>
       </div>

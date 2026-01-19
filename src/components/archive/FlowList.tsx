@@ -24,7 +24,7 @@ export function FlowList() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-gray-400">Laden...</div>
+        <div style={{ color: 'var(--bark)' }}>Laden...</div>
       </div>
     );
   }
@@ -34,16 +34,28 @@ export function FlowList() {
   if (dates.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-        <div className="text-6xl mb-4">🧘</div>
-        <h3 className="text-xl font-semibold text-gray-700 mb-2">
+        <div
+          className="w-20 h-20 rounded-full flex items-center justify-center mb-4"
+          style={{ backgroundColor: 'var(--sand)' }}
+        >
+          <span className="text-4xl">🧘</span>
+        </div>
+        <h3
+          className="text-xl font-semibold mb-2"
+          style={{ color: 'var(--earth)' }}
+        >
           Nog geen flows
         </h3>
-        <p className="text-gray-500 mb-6">
+        <p className="mb-6" style={{ color: 'var(--bark)' }}>
           Start je eerste yoga sessie om je archief te vullen
         </p>
         <Link
           href="/"
-          className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
+          className="px-6 py-3 text-white rounded-xl font-medium transition-colors"
+          style={{
+            backgroundColor: 'var(--primary)',
+            boxShadow: '0 4px 14px rgba(107, 142, 107, 0.3)',
+          }}
         >
           Nieuwe Flow
         </Link>
@@ -55,24 +67,42 @@ export function FlowList() {
     <div className="space-y-6">
       {dates.map(date => (
         <div key={date}>
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 px-1">
+          <h3
+            className="text-sm font-semibold uppercase tracking-wider mb-3 px-1"
+            style={{ color: 'var(--bark)' }}
+          >
             {date}
           </h3>
           <div className="space-y-3">
             {flowsByDate[date].map(flow => (
               <div
                 key={flow.id}
-                className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
+                className="rounded-2xl p-4"
+                style={{
+                  backgroundColor: 'var(--cream)',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+                }}
               >
                 <div className="flex items-start justify-between">
                   <Link href={`/flow/${flow.id}`} className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className="text-2xl">🧘</span>
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: 'var(--sand)' }}
+                      >
+                        <span className="text-xl">🧘</span>
+                      </div>
                       <div>
-                        <div className="font-semibold text-gray-800">
+                        <div
+                          className="font-semibold"
+                          style={{ color: 'var(--earth)' }}
+                        >
                           {flow.duration} minuten
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div
+                          className="text-sm"
+                          style={{ color: 'var(--bark)' }}
+                        >
                           {flow.poses.length} poses • {flow.timerMode === 'breaths' ? 'Ademhalingen' : 'Seconden'}
                         </div>
                       </div>
@@ -81,7 +111,11 @@ export function FlowList() {
                       {flow.focusAreas.map(area => (
                         <span
                           key={area}
-                          className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium"
+                          className="px-2 py-0.5 rounded-full text-xs font-medium"
+                          style={{
+                            backgroundColor: 'var(--sand)',
+                            color: 'var(--primary-dark)',
+                          }}
                         >
                           {FOCUS_AREA_LABELS[area]}
                         </span>
@@ -90,10 +124,13 @@ export function FlowList() {
                   </Link>
                   <button
                     onClick={() => handleDelete(flow.id)}
-                    className="text-gray-400 hover:text-red-500 p-2 transition-colors"
+                    className="p-2 transition-colors rounded-lg hover:bg-red-50"
+                    style={{ color: 'var(--bark)' }}
                     title="Verwijderen"
                   >
-                    🗑️
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" />
+                    </svg>
                   </button>
                 </div>
               </div>
