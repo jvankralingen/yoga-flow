@@ -144,6 +144,8 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
 
         console.log(`[YOGA] ===== SHOW_NEXT_POSE CALLED =====`);
         console.log(`[YOGA] Current pose: ${currentPoseIndex} (${currentPose.pose.englishName})`);
+        console.log(`[YOGA] poseStartTimeRef.current: ${poseStartTimeRef.current}`);
+        console.log(`[YOGA] now: ${now}`);
         console.log(`[YOGA] Breaths: ${breathCount} × ${fullBreathSeconds}s (${breathPace}s in + ${breathPace}s uit) = ${holdSeconds}s hold`);
         console.log(`[YOGA] Min duration: ${POSE_INTRO_SECONDS}s intro + ${holdSeconds}s hold = ${Math.round(minDuration / 1000)}s`);
         console.log(`[YOGA] Elapsed: ${Math.round(elapsed / 1000)}s | Remaining: ${Math.round(remaining / 1000)}s`);
