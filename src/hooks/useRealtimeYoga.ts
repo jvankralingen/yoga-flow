@@ -131,6 +131,14 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
       // Handle tool call for show_next_pose
       const handleShowNextPose = (callId: string) => {
         const now = Date.now();
+        const startTime = poseStartTimeRef.current;
+
+        // Safety check: if timer was never started, start it now
+        if (startTime === 0) {
+          console.log('[YOGA] WARNING: Timer was never started! Starting now.');
+          poseStartTimeRef.current = now;
+        }
+
         const elapsed = now - poseStartTimeRef.current;
         const currentPoseIndex = currentPoseIndexRef.current;
         const minDuration = calculatePoseDuration(flow, currentPoseIndex);
@@ -186,10 +194,12 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
           } else {
             // Move to next pose
             const nextPose = flow.poses[nextIndex];
+            const newStartTime = Date.now();
             console.log(`[YOGA] RESULT: ADVANCING to pose ${nextIndex}: ${nextPose.pose.englishName}`);
+            console.log(`[YOGA] Resetting timer to: ${newStartTime}`);
 
             currentPoseIndexRef.current = nextIndex;
-            poseStartTimeRef.current = Date.now();
+            poseStartTimeRef.current = newStartTime;
             onShowPoseRef.current?.(nextIndex);
 
             dc.send(JSON.stringify({
