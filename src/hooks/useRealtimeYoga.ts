@@ -12,21 +12,13 @@ interface UseRealtimeYogaOptions {
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
-// Time for AI to introduce the pose (seconds)
-const POSE_INTRO_SECONDS = 5;
-
-// Calculate minimum duration for a pose in milliseconds
-// duration = intro + (aantal ademhalingen × (in + uit))
+// Calculate pose duration in milliseconds (breath count × full breath duration)
 function calculatePoseDuration(flow: Flow, poseIndex: number): number {
   const flowPose = flow.poses[poseIndex];
-  const breathPaceSeconds = BREATH_PACE_SECONDS[flow.breathPace]; // in OF uit tijd
-  const fullBreathSeconds = breathPaceSeconds * 2; // in + uit = volledige ademhaling
-  const breathCount = flowPose.duration; // aantal ademhalingen
-
-  const holdSeconds = breathCount * fullBreathSeconds;
-  const totalSeconds = POSE_INTRO_SECONDS + holdSeconds;
-
-  return totalSeconds * 1000;
+  const breathPaceSeconds = BREATH_PACE_SECONDS[flow.breathPace];
+  const fullBreathSeconds = breathPaceSeconds * 2; // in + uit
+  const breathCount = flowPose.duration;
+  return breathCount * fullBreathSeconds * 1000;
 }
 
 export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseRealtimeYogaOptions) {
@@ -45,26 +37,113 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
   const sessionActiveRef = useRef(false);
   const sessionCompleteRef = useRef(false);
   const currentPoseIndexRef = useRef(0);
-  const poseStartTimeRef = useRef(0); // Track when current pose started
+
+  // Timer refs
+  const poseTimersRef = useRef<{
+    halfway: NodeJS.Timeout | null;
+    almostDone: NodeJS.Timeout | null;
+    done: NodeJS.Timeout | null;
+  }>({ halfway: null, almostDone: null, done: null });
+
   onShowPoseRef.current = onShowPose;
   onSessionCompleteRef.current = onSessionComplete;
 
   // Build instructions with full pose list
   const instructions = buildYogaInstructions(flow);
 
-  // Tool definition for show_next_pose
-  const tools = [
-    {
-      type: 'function',
-      name: 'show_next_pose',
-      description: 'Roep dit aan om naar de volgende pose te gaan. Als de minimum tijd nog niet is verstreken, krijg je te horen hoeveel seconden je nog moet wachten.',
-      parameters: {
-        type: 'object',
-        properties: {},
-        required: [],
+  // Helper to send AI prompt
+  const triggerAI = useCallback((message: string) => {
+    if (dataChannelRef.current?.readyState !== 'open') return;
+
+    console.log(`[YOGA] Triggering AI: "${message}"`);
+
+    dataChannelRef.current.send(JSON.stringify({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'input_text', text: message }],
       },
-    },
-  ];
+    }));
+
+    dataChannelRef.current.send(JSON.stringify({
+      type: 'response.create',
+      response: { modalities: ['audio', 'text'] },
+    }));
+  }, []);
+
+  // Clear all pose timers
+  const clearPoseTimers = useCallback(() => {
+    if (poseTimersRef.current.halfway) clearTimeout(poseTimersRef.current.halfway);
+    if (poseTimersRef.current.almostDone) clearTimeout(poseTimersRef.current.almostDone);
+    if (poseTimersRef.current.done) clearTimeout(poseTimersRef.current.done);
+    poseTimersRef.current = { halfway: null, almostDone: null, done: null };
+  }, []);
+
+  // Start timers for a pose
+  const startPoseTimers = useCallback((poseIndex: number) => {
+    clearPoseTimers();
+
+    const pose = flow.poses[poseIndex];
+    const duration = calculatePoseDuration(flow, poseIndex);
+    const breathPace = BREATH_PACE_SECONDS[flow.breathPace];
+    const fullBreathSeconds = breathPace * 2;
+    const twoBreathsMs = 2 * fullBreathSeconds * 1000;
+
+    console.log(`[YOGA] ===== STARTING POSE ${poseIndex}: ${pose.pose.englishName} =====`);
+    console.log(`[YOGA] Duration: ${duration / 1000}s`);
+    console.log(`[YOGA] Halfway at: ${duration / 2 / 1000}s`);
+    console.log(`[YOGA] Almost done at: ${(duration - twoBreathsMs) / 1000}s`);
+    console.log(`[YOGA] ===========================================`);
+
+    // Halfway point - trigger encouragement
+    poseTimersRef.current.halfway = setTimeout(() => {
+      if (!sessionActiveRef.current || sessionCompleteRef.current) return;
+      console.log(`[YOGA] TIMER: Halfway point reached`);
+      triggerAI('Geef een korte aanmoediging aan de student. Houd het rustig.');
+    }, duration / 2);
+
+    // 2 breaths before end - trigger "almost done"
+    const almostDoneTime = duration - twoBreathsMs;
+    if (almostDoneTime > duration / 2) { // Only if it's after halfway
+      poseTimersRef.current.almostDone = setTimeout(() => {
+        if (!sessionActiveRef.current || sessionCompleteRef.current) return;
+        console.log(`[YOGA] TIMER: Almost done point reached`);
+        triggerAI('We zijn bijna klaar met deze pose. Bereid de student voor.');
+      }, almostDoneTime);
+    }
+
+    // Timer done - advance to next pose
+    poseTimersRef.current.done = setTimeout(() => {
+      if (!sessionActiveRef.current || sessionCompleteRef.current) return;
+      console.log(`[YOGA] TIMER: Pose complete`);
+
+      const nextIndex = currentPoseIndexRef.current + 1;
+
+      if (nextIndex >= flow.poses.length) {
+        // Session complete
+        console.log(`[YOGA] SESSION COMPLETE`);
+        sessionCompleteRef.current = true;
+        sessionActiveRef.current = false;
+        clearPoseTimers();
+        triggerAI('Dit was de laatste pose. Sluit de sessie af met Namaste.');
+        onSessionCompleteRef.current?.();
+      } else {
+        // Move to next pose
+        const nextPose = flow.poses[nextIndex];
+        console.log(`[YOGA] ADVANCING to pose ${nextIndex}: ${nextPose.pose.englishName}`);
+
+        currentPoseIndexRef.current = nextIndex;
+        onShowPoseRef.current?.(nextIndex);
+
+        // Start timers for next pose
+        startPoseTimers(nextIndex);
+
+        // Trigger AI for new pose
+        triggerAI(`We gaan nu naar ${nextPose.pose.englishName}. Beschrijf deze pose.`);
+      }
+    }, duration);
+  }, [flow, clearPoseTimers, triggerAI]);
 
   // Connect to OpenAI Realtime API
   const connect = useCallback(async () => {
@@ -73,14 +152,13 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
     setStatus('connecting');
 
     try {
-      // Get ephemeral token from our API with show_next_pose tool
+      // Get ephemeral token from our API (no tools needed - timer controls flow)
       const sessionResponse = await fetch('/api/realtime/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           instructions,
           voice: 'sage',
-          tools,
         }),
       });
 
@@ -128,132 +206,6 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
         setStatus('connected');
       };
 
-      // Handle tool call for show_next_pose
-      const handleShowNextPose = (callId: string) => {
-        const now = Date.now();
-        const startTime = poseStartTimeRef.current;
-
-        // Safety check: if timer was never started, start it now
-        if (startTime === 0) {
-          console.log('[YOGA] WARNING: Timer was never started! Starting now.');
-          poseStartTimeRef.current = now;
-        }
-
-        const elapsed = now - poseStartTimeRef.current;
-        const currentPoseIndex = currentPoseIndexRef.current;
-        const minDuration = calculatePoseDuration(flow, currentPoseIndex);
-        const remaining = minDuration - elapsed;
-
-        const currentPose = flow.poses[currentPoseIndex];
-        const breathCount = currentPose.duration;
-        const breathPace = BREATH_PACE_SECONDS[flow.breathPace];
-        const fullBreathSeconds = breathPace * 2; // in + uit
-        const holdSeconds = breathCount * fullBreathSeconds;
-
-        console.log(`[YOGA] ===== SHOW_NEXT_POSE CALLED =====`);
-        console.log(`[YOGA] Current pose: ${currentPoseIndex} (${currentPose.pose.englishName})`);
-        console.log(`[YOGA] poseStartTimeRef.current: ${poseStartTimeRef.current}`);
-        console.log(`[YOGA] now: ${now}`);
-        console.log(`[YOGA] Breaths: ${breathCount} × ${fullBreathSeconds}s (${breathPace}s in + ${breathPace}s uit) = ${holdSeconds}s hold`);
-        console.log(`[YOGA] Min duration: ${POSE_INTRO_SECONDS}s intro + ${holdSeconds}s hold = ${Math.round(minDuration / 1000)}s`);
-        console.log(`[YOGA] Elapsed: ${Math.round(elapsed / 1000)}s | Remaining: ${Math.round(remaining / 1000)}s`);
-
-        if (remaining > 0) {
-          // Timer not done yet - tell AI to wait
-          const secondsLeft = Math.ceil(remaining / 1000);
-          console.log(`[YOGA] RESULT: TOO EARLY - wait ${secondsLeft}s more`);
-
-          dc.send(JSON.stringify({
-            type: 'conversation.item.create',
-            item: {
-              type: 'function_call_output',
-              call_id: callId,
-              output: `Wacht nog ${secondsLeft} seconden voordat je weer show_next_pose aanroept. Blijf ondertussen de student begeleiden met rustige aanmoediging.`,
-            },
-          }));
-
-          // Send user message to guide AI behavior during wait
-          dc.send(JSON.stringify({
-            type: 'conversation.item.create',
-            item: {
-              type: 'message',
-              role: 'user',
-              content: [{ type: 'input_text', text: `Blijf de huidige pose begeleiden. Geef rustige aanmoediging. Probeer show_next_pose opnieuw over ${secondsLeft} seconden.` }],
-            },
-          }));
-
-          // Request response so AI continues
-          dc.send(JSON.stringify({
-            type: 'response.create',
-            response: { modalities: ['audio', 'text'] },
-          }));
-        } else {
-          // Timer done - advance to next pose
-          const nextIndex = currentPoseIndexRef.current + 1;
-
-          if (nextIndex >= flow.poses.length) {
-            // Session complete
-            console.log('[YOGA] RESULT: SESSION COMPLETE - last pose done');
-            sessionCompleteRef.current = true;
-            sessionActiveRef.current = false;
-
-            dc.send(JSON.stringify({
-              type: 'conversation.item.create',
-              item: {
-                type: 'function_call_output',
-                call_id: callId,
-                output: 'Dit was de laatste pose. Sluit de sessie af met Namaste en bedank de student.',
-              },
-            }));
-
-            onSessionCompleteRef.current?.();
-          } else {
-            // Move to next pose
-            const nextPose = flow.poses[nextIndex];
-            const newStartTime = Date.now();
-            console.log(`[YOGA] RESULT: ADVANCING to pose ${nextIndex}: ${nextPose.pose.englishName}`);
-            console.log(`[YOGA] Resetting timer to: ${newStartTime}`);
-
-            currentPoseIndexRef.current = nextIndex;
-            poseStartTimeRef.current = newStartTime;
-            onShowPoseRef.current?.(nextIndex);
-
-            // Send tool output
-            dc.send(JSON.stringify({
-              type: 'conversation.item.create',
-              item: {
-                type: 'function_call_output',
-                call_id: callId,
-                output: `Ga nu door naar: ${nextPose.pose.englishName}`,
-              },
-            }));
-          }
-        }
-        console.log(`[YOGA] ===================================`);
-
-        // Only request AI to continue if we're advancing to next pose or session complete
-        if (remaining <= 0) {
-          if (currentPoseIndexRef.current < flow.poses.length) {
-            // Moving to next pose - give explicit instruction
-            const currentPose = flow.poses[currentPoseIndexRef.current];
-            dc.send(JSON.stringify({
-              type: 'conversation.item.create',
-              item: {
-                type: 'message',
-                role: 'user',
-                content: [{ type: 'input_text', text: `Begeleid nu ${currentPose.pose.englishName}.` }],
-              },
-            }));
-          }
-          // Request response for next pose or session end
-          dc.send(JSON.stringify({
-            type: 'response.create',
-            response: { modalities: ['audio', 'text'] },
-          }));
-        }
-        // If remaining > 0: Don't send response.create - AI will continue on its own
-      };
-
       dc.onmessage = (event) => {
         const data = JSON.parse(event.data);
 
@@ -273,34 +225,10 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
           }
         }
 
-        // Handle tool calls
-        if (data.type === 'response.function_call_arguments.done') {
-          console.log('[YOGA] Tool call:', data.name, data.call_id);
-          if (data.name === 'show_next_pose') {
-            handleShowNextPose(data.call_id);
-          }
-        }
-
-        // When response is done without tool call, continue if needed
         if (data.type === 'response.done') {
           if (isSpeakingRef.current) {
             isSpeakingRef.current = false;
             setIsSpeaking(false);
-          }
-
-          // Check if response ended without tool call - might need to prompt continuation
-          const output = data.response?.output || [];
-          const hasToolCall = output.some((item: { type: string }) => item.type === 'function_call');
-
-          if (!hasToolCall &&
-              dataChannelRef.current?.readyState === 'open' &&
-              sessionActiveRef.current &&
-              !sessionCompleteRef.current) {
-            // AI didn't call tool - remind it to continue
-            dataChannelRef.current.send(JSON.stringify({
-              type: 'response.create',
-              response: { modalities: ['audio', 'text'] },
-            }));
           }
         }
 
@@ -352,6 +280,8 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
 
   // Disconnect from OpenAI
   const disconnect = useCallback(() => {
+    clearPoseTimers();
+
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
@@ -373,7 +303,7 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
     }
 
     setStatus('disconnected');
-  }, []);
+  }, [clearPoseTimers]);
 
   // Cancel any ongoing response/speech
   const cancelResponse = useCallback(() => {
@@ -382,7 +312,8 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
     }
 
     console.log('[Realtime] Cancelling current response');
-    sessionActiveRef.current = false; // Stop the continuation loop
+    sessionActiveRef.current = false;
+    clearPoseTimers();
 
     dataChannelRef.current.send(JSON.stringify({
       type: 'response.cancel',
@@ -395,51 +326,34 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
 
     isSpeakingRef.current = false;
     setIsSpeaking(false);
-  }, []);
+  }, [clearPoseTimers]);
 
-  // Start the yoga session - AI takes over from here
+  // Start the yoga session - Timer takes control
   const startSession = useCallback(() => {
     if (dataChannelRef.current?.readyState !== 'open') {
       console.log('[Realtime] Data channel not open, cannot start session');
       return;
     }
 
-    const startTime = Date.now();
     const firstPose = flow.poses[0];
-    const breathPace = BREATH_PACE_SECONDS[flow.breathPace];
-    const fullBreathSeconds = breathPace * 2;
-    const firstPoseDuration = calculatePoseDuration(flow, 0);
 
     console.log('[YOGA] ===== SESSION STARTING =====');
     console.log(`[YOGA] Total poses: ${flow.poses.length}`);
-    console.log(`[YOGA] Breath pace: ${breathPace}s in + ${breathPace}s uit = ${fullBreathSeconds}s per breath`);
-    console.log(`[YOGA] First pose: ${firstPose.pose.englishName} (${firstPose.duration} breaths = ${Math.round(firstPoseDuration / 1000)}s)`);
     console.log('[YOGA] ==============================');
 
     sessionActiveRef.current = true;
     sessionCompleteRef.current = false;
     currentPoseIndexRef.current = 0;
-    poseStartTimeRef.current = startTime; // Start timer for first pose
 
     // Show first pose immediately
     onShowPoseRef.current?.(0);
 
-    // Send start message
-    dataChannelRef.current.send(JSON.stringify({
-      type: 'conversation.item.create',
-      item: {
-        type: 'message',
-        role: 'user',
-        content: [{ type: 'input_text', text: 'Start de yoga sessie. Begin met de eerste pose.' }],
-      },
-    }));
+    // Start timers for first pose
+    startPoseTimers(0);
 
-    // Request response
-    dataChannelRef.current.send(JSON.stringify({
-      type: 'response.create',
-      response: { modalities: ['audio', 'text'] },
-    }));
-  }, []);
+    // Trigger AI for first pose
+    triggerAI(`Start de yoga sessie. Begin met ${firstPose.pose.englishName}. Beschrijf deze pose.`);
+  }, [flow, startPoseTimers, triggerAI]);
 
   // Skip to a specific pose (manual override)
   const skipToPose = useCallback((poseIndex: number, poseName: string) => {
@@ -448,8 +362,11 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
     }
 
     console.log('[Realtime] Manual skip to pose:', poseIndex, poseName);
+
+    // Clear current timers
+    clearPoseTimers();
+
     currentPoseIndexRef.current = poseIndex;
-    poseStartTimeRef.current = Date.now(); // Reset timer for new pose
 
     // Cancel current response
     dataChannelRef.current.send(JSON.stringify({
@@ -461,25 +378,17 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
       audioElementRef.current.currentTime = 0;
     }
 
-    // Small delay then send skip message
+    // Small delay then start new pose
     setTimeout(() => {
       if (dataChannelRef.current?.readyState !== 'open') return;
 
-      dataChannelRef.current.send(JSON.stringify({
-        type: 'conversation.item.create',
-        item: {
-          type: 'message',
-          role: 'user',
-          content: [{ type: 'input_text', text: `Ga nu verder met ${poseName}. Begeleid deze pose.` }],
-        },
-      }));
+      // Start timers for new pose
+      startPoseTimers(poseIndex);
 
-      dataChannelRef.current.send(JSON.stringify({
-        type: 'response.create',
-        response: { modalities: ['audio', 'text'] },
-      }));
+      // Trigger AI for new pose
+      triggerAI(`We gaan nu naar ${poseName}. Beschrijf deze pose.`);
     }, 100);
-  }, []);
+  }, [clearPoseTimers, startPoseTimers, triggerAI]);
 
   return {
     status,
