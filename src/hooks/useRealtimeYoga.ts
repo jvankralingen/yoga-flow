@@ -116,13 +116,22 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
 
       // Handle tool call for show_next_pose
       const handleShowNextPose = (callId: string) => {
-        const elapsed = Date.now() - poseStartTimeRef.current;
+        const now = Date.now();
+        const elapsed = now - poseStartTimeRef.current;
         const remaining = MIN_POSE_DURATION_MS - elapsed;
+
+        console.log(`[YOGA] ===== SHOW_NEXT_POSE CALLED =====`);
+        console.log(`[YOGA] Current pose index: ${currentPoseIndexRef.current}`);
+        console.log(`[YOGA] Pose started at: ${new Date(poseStartTimeRef.current).toISOString()}`);
+        console.log(`[YOGA] Current time: ${new Date(now).toISOString()}`);
+        console.log(`[YOGA] Elapsed: ${Math.round(elapsed / 1000)}s`);
+        console.log(`[YOGA] Min duration: ${MIN_POSE_DURATION_MS / 1000}s`);
+        console.log(`[YOGA] Remaining: ${Math.round(remaining / 1000)}s`);
 
         if (remaining > 0) {
           // Timer not done yet - tell AI to wait
           const secondsLeft = Math.ceil(remaining / 1000);
-          console.log(`[YOGA] show_next_pose called too early, ${secondsLeft}s remaining`);
+          console.log(`[YOGA] RESULT: TOO EARLY - wait ${secondsLeft}s more`);
 
           dc.send(JSON.stringify({
             type: 'conversation.item.create',
@@ -138,7 +147,7 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
 
           if (nextIndex >= flow.poses.length) {
             // Session complete
-            console.log('[YOGA] Session complete - last pose done');
+            console.log('[YOGA] RESULT: SESSION COMPLETE - last pose done');
             sessionCompleteRef.current = true;
             sessionActiveRef.current = false;
 
@@ -155,7 +164,7 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
           } else {
             // Move to next pose
             const nextPose = flow.poses[nextIndex];
-            console.log(`[YOGA] Advancing to pose ${nextIndex}: ${nextPose.pose.englishName}`);
+            console.log(`[YOGA] RESULT: ADVANCING to pose ${nextIndex}: ${nextPose.pose.englishName}`);
 
             currentPoseIndexRef.current = nextIndex;
             poseStartTimeRef.current = Date.now();
@@ -171,6 +180,7 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
             }));
           }
         }
+        console.log(`[YOGA] ===================================`);
 
         // Request AI to continue
         dc.send(JSON.stringify({
@@ -329,11 +339,17 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
       return;
     }
 
-    console.log('[Realtime] Starting yoga session');
+    const startTime = Date.now();
+    console.log('[YOGA] ===== SESSION STARTING =====');
+    console.log(`[YOGA] Start time: ${new Date(startTime).toISOString()}`);
+    console.log(`[YOGA] Total poses: ${flow.poses.length}`);
+    console.log(`[YOGA] Min pose duration: ${MIN_POSE_DURATION_MS / 1000}s`);
+    console.log('[YOGA] ==============================');
+
     sessionActiveRef.current = true;
     sessionCompleteRef.current = false;
     currentPoseIndexRef.current = 0;
-    poseStartTimeRef.current = Date.now(); // Start timer for first pose
+    poseStartTimeRef.current = startTime; // Start timer for first pose
 
     // Show first pose immediately
     onShowPoseRef.current?.(0);
