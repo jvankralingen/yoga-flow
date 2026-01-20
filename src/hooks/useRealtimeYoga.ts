@@ -233,7 +233,7 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
         }
 
         if (data.type === 'error') {
-          console.error('[Realtime] Error:', data);
+          console.error('[Realtime] Error:', data.error?.type, data.error?.message, data);
         }
       };
 
@@ -374,14 +374,19 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
     // Update visual immediately
     onShowPoseRef.current?.(poseIndex);
 
-    // Cancel current response
-    dataChannelRef.current.send(JSON.stringify({
-      type: 'response.cancel',
-    }));
+    // Cancel current response only if AI is speaking
+    if (isSpeakingRef.current) {
+      dataChannelRef.current.send(JSON.stringify({
+        type: 'response.cancel',
+      }));
 
-    if (audioElementRef.current) {
-      audioElementRef.current.pause();
-      audioElementRef.current.currentTime = 0;
+      if (audioElementRef.current) {
+        audioElementRef.current.pause();
+        audioElementRef.current.currentTime = 0;
+      }
+
+      isSpeakingRef.current = false;
+      setIsSpeaking(false);
     }
 
     // Small delay then start new pose

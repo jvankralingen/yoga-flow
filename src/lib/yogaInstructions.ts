@@ -7,7 +7,7 @@ export function buildYogaInstructions(flow: Flow): string {
                      fp.side === 'both' ? ' (beide kanten)' : '';
     return `  ${i + 1}. ${fp.pose.englishName}${sideText}: ${fp.pose.description}`;
   }).join('\n');
-  console.log(flow.poses);
+  
   return `Je bent een rustige Nederlandse yoga-instructeur. Je spreekt ALTIJD Nederlands.
 
 POSES (${flow.poses.length}):
