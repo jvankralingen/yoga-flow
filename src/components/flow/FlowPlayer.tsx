@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Flow } from '@/lib/types';
 import { useRealtimeYoga } from '@/hooks/useRealtimeYoga';
+import { useAmbientSound } from '@/hooks/useAmbientSound';
 import { PoseCard } from './PoseCard';
 import { saveFlow } from '@/lib/storage';
 
@@ -18,15 +19,24 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const currentPose = flow.poses[currentIndex];
-  const isLastPose = currentIndex === flow.poses.length - 1;
 
-  // Ref to track current index for callbacks (avoids stale closures)
-  const currentIndexRef = useRef(currentIndex);
-  currentIndexRef.current = currentIndex;
+  // Track if we've started the session
+  const sessionStartedRef = useRef(false);
+  const [pendingStart, setPendingStart] = useState(false);
+  const [ambientEnabled, setAmbientEnabled] = useState(true);
 
-  // Track if we've sent the start cue
-  const startCuedRef = useRef(false);
-  const [pendingStartCue, setPendingStartCue] = useState(false);
+  // Ambient nature sounds
+  const {
+    isPlaying: isAmbientPlaying,
+    isLoaded: isAmbientLoaded,
+    play: playAmbient,
+    stop: stopAmbient,
+  } = useAmbientSound({
+    src: '/audio/ambient-birds.mp3',
+    volume: 0.15,
+    fadeInDuration: 3000,
+    fadeOutDuration: 2000,
+  });
 
   // Wake lock management to keep screen on
   const requestWakeLock = useCallback(async () => {
@@ -48,34 +58,22 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
     }
   }, []);
 
-  // Handle when AI signals pose is complete
-  const handlePoseComplete = useCallback(() => {
-    const idx = currentIndexRef.current;
-    const lastPose = idx === flow.poses.length - 1;
-
-    console.log('[FlowPlayer] AI signaled pose complete, current index:', idx, 'isLast:', lastPose);
-
-    if (!lastPose) {
-      const newIndex = idx + 1;
-      const nextPose = flow.poses[newIndex];
-
-      setCurrentIndex(newIndex);
-
-      // AI will receive the NEXT cue and continue guiding
-      cueNextRef.current?.(nextPose.pose.englishName, nextPose.side);
-    } else {
-      // Flow complete
-      cueCompleteRef.current?.();
-      setFlowCompleted(true);
-      saveFlow(flow);
+  // Handle when AI tells us which pose to show
+  const handleShowPose = useCallback((poseIndex: number) => {
+    console.log('[FlowPlayer] AI says show pose:', poseIndex);
+    if (poseIndex >= 0 && poseIndex < flow.poses.length) {
+      setCurrentIndex(poseIndex);
     }
+  }, [flow.poses.length]);
+
+  // Handle when AI signals session is complete
+  const handleSessionComplete = useCallback(() => {
+    console.log('[FlowPlayer] AI signaled session complete');
+    setFlowCompleted(true);
+    saveFlow(flow);
   }, [flow]);
 
-  // Refs for cue functions to avoid stale closures
-  const cueNextRef = useRef<(poseName: string, side?: string) => void>(undefined);
-  const cueCompleteRef = useRef<() => void>(undefined);
-
-  // Realtime yoga voice
+  // Realtime yoga voice - AI controls everything
   const {
     status: voiceStatus,
     isConnected,
@@ -83,27 +81,23 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
     connect,
     disconnect,
     cancelResponse,
-    cueStart,
-    cueNext,
-    cueComplete,
+    startSession,
+    skipToPose,
   } = useRealtimeYoga({
     flow,
-    onPoseComplete: handlePoseComplete,
+    onShowPose: handleShowPose,
+    onSessionComplete: handleSessionComplete,
   });
 
-  // Keep refs updated
-  cueNextRef.current = cueNext;
-  cueCompleteRef.current = cueComplete;
-
-  // Send start cue when connection is established
+  // Start the session when connection is established
   useEffect(() => {
-    if (pendingStartCue && isConnected && !startCuedRef.current) {
-      console.log('[FlowPlayer] Connection ready, sending start cue');
-      startCuedRef.current = true;
-      setPendingStartCue(false);
-      cueStart(currentPose.pose.englishName);
+    if (pendingStart && isConnected && !sessionStartedRef.current) {
+      console.log('[FlowPlayer] Connection ready, starting session');
+      sessionStartedRef.current = true;
+      setPendingStart(false);
+      startSession();
     }
-  }, [pendingStartCue, isConnected, cueStart, currentPose.pose.englishName]);
+  }, [pendingStart, isConnected, startSession]);
 
   // Handle Start button click
   const handleStart = useCallback(async () => {
@@ -114,20 +108,28 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
       // Keep screen on during session
       requestWakeLock();
 
+      // Start ambient sound if enabled and loaded
+      if (ambientEnabled && isAmbientLoaded) {
+        playAmbient();
+      }
+
       // Connect to voice if not connected
       if (!isConnected && voiceStatus !== 'connecting') {
-        setPendingStartCue(true);
+        setPendingStart(true);
         await connect();
       } else if (isConnected) {
-        // Already connected, send cue directly
-        if (!startCuedRef.current) {
-          startCuedRef.current = true;
-          cueStart(currentPose.pose.englishName);
+        // Already connected, start session directly
+        if (!sessionStartedRef.current) {
+          sessionStartedRef.current = true;
+          startSession();
         }
       }
     } else {
       // Pausing the session
       setIsSessionActive(false);
+
+      // Stop ambient sound
+      stopAmbient();
 
       // Cancel any ongoing speech
       if (isConnected) {
@@ -136,7 +138,7 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
 
       releaseWakeLock();
     }
-  }, [isSessionActive, isConnected, voiceStatus, connect, cueStart, currentPose.pose.englishName, cancelResponse, requestWakeLock, releaseWakeLock]);
+  }, [isSessionActive, isConnected, voiceStatus, connect, startSession, cancelResponse, requestWakeLock, releaseWakeLock, ambientEnabled, isAmbientLoaded, playAmbient, stopAmbient]);
 
   // Navigate to previous pose manually
   const goToPrevious = useCallback(() => {
@@ -144,25 +146,17 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
       const newIndex = currentIndex - 1;
       const prevPose = flow.poses[newIndex];
 
-      if (isConnected) {
-        cancelResponse();
-      }
-
       setCurrentIndex(newIndex);
 
       if (isConnected && isSessionActive) {
-        setTimeout(() => {
-          cueNext(prevPose.pose.englishName, prevPose.side);
-        }, 100);
+        skipToPose(newIndex, prevPose.pose.englishName);
       }
     }
-  }, [currentIndex, flow.poses, isConnected, cancelResponse, cueNext, isSessionActive]);
+  }, [currentIndex, flow.poses, isConnected, isSessionActive, skipToPose]);
 
   // Navigate to next pose manually (skip)
   const goToNext = useCallback(() => {
-    if (isConnected) {
-      cancelResponse();
-    }
+    const isLastPose = currentIndex === flow.poses.length - 1;
 
     if (!isLastPose) {
       const newIndex = currentIndex + 1;
@@ -171,34 +165,42 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
       setCurrentIndex(newIndex);
 
       if (isConnected && isSessionActive) {
-        setTimeout(() => {
-          cueNext(nextPose.pose.englishName, nextPose.side);
-        }, 100);
+        skipToPose(newIndex, nextPose.pose.englishName);
       }
     } else {
-      if (isConnected) {
-        setTimeout(() => {
-          cueComplete();
-        }, 100);
-      }
       saveFlow(flow);
       router.push('/archive');
     }
-  }, [currentIndex, isLastPose, flow, isConnected, cancelResponse, cueNext, cueComplete, isSessionActive, router]);
+  }, [currentIndex, flow, isConnected, isSessionActive, skipToPose, router]);
 
   const finishFlow = () => {
     releaseWakeLock();
+    stopAmbient();
     disconnect();
     router.push('/archive');
   };
+
+  // Toggle ambient sound
+  const toggleAmbient = useCallback(() => {
+    if (isAmbientPlaying) {
+      stopAmbient();
+      setAmbientEnabled(false);
+    } else if (isAmbientLoaded && isSessionActive) {
+      playAmbient();
+      setAmbientEnabled(true);
+    } else {
+      setAmbientEnabled(!ambientEnabled);
+    }
+  }, [isAmbientPlaying, isAmbientLoaded, isSessionActive, playAmbient, stopAmbient, ambientEnabled]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       releaseWakeLock();
+      stopAmbient();
       disconnect();
     };
-  }, [disconnect, releaseWakeLock]);
+  }, [disconnect, releaseWakeLock, stopAmbient]);
 
   // Show completion screen
   if (flowCompleted) {
@@ -308,7 +310,29 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* Ambient sound toggle */}
+            {isAmbientLoaded && (
+              <button
+                onClick={toggleAmbient}
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                style={{
+                  backgroundColor: ambientEnabled ? 'var(--primary-light)' : 'var(--sand)',
+                  color: ambientEnabled ? 'white' : 'var(--bark)',
+                }}
+                title={ambientEnabled ? 'Achtergrondgeluid uit' : 'Achtergrondgeluid aan'}
+              >
+                {ambientEnabled ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 3c.5 0 1 .19 1.41.59.4.4.59.91.59 1.41v14c0 .5-.19 1.01-.59 1.41-.4.4-.91.59-1.41.59-.5 0-1.01-.19-1.41-.59C10.19 20.01 10 19.5 10 19V5c0-.5.19-1.01.59-1.41.4-.4.91-.59 1.41-.59zM7 8c.5 0 1 .19 1.41.59.4.4.59.91.59 1.41v4c0 .5-.19 1.01-.59 1.41-.4.4-.91.59-1.41.59-.5 0-1.01-.19-1.41-.59C5.19 15.01 5 14.5 5 14v-4c0-.5.19-1.01.59-1.41C5.99 8.19 6.5 8 7 8zm10 0c.5 0 1 .19 1.41.59.4.4.59.91.59 1.41v4c0 .5-.19 1.01-.59 1.41-.4.4-.91.59-1.41.59-.5 0-1.01-.19-1.41-.59-.4-.4-.59-.91-.59-1.41v-4c0-.5.19-1.01.59-1.41.4-.4.91-.59 1.41-.59z"/>
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 3l18 18M12 5v8.5M7 8v4M17 8v8"/>
+                  </svg>
+                )}
+              </button>
+            )}
             {getStatusIndicator()}
             <span
               className="text-sm font-medium px-3 py-1 rounded-full"
