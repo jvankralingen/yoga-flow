@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { Flow } from '@/lib/types';
+import { Flow, BREATH_PACE_SECONDS } from '@/lib/types';
 import { buildYogaInstructions } from '@/lib/yogaInstructions';
 
 interface UseRealtimeYogaOptions {
@@ -12,8 +12,24 @@ interface UseRealtimeYogaOptions {
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
-// Minimum time per pose in milliseconds
-const MIN_POSE_DURATION_MS = 25000;
+// Time for AI to introduce the pose (seconds)
+const POSE_INTRO_SECONDS = 5;
+
+// Calculate minimum duration for a pose in milliseconds
+function calculatePoseDuration(flow: Flow, poseIndex: number): number {
+  const flowPose = flow.poses[poseIndex];
+  const breathSeconds = BREATH_PACE_SECONDS[flow.breathPace];
+
+  // duration is either seconds or number of breaths depending on timerMode
+  const poseDurationSeconds = flow.timerMode === 'breaths'
+    ? flowPose.duration * breathSeconds
+    : flowPose.duration;
+
+  // Total = intro time + pose hold time
+  const totalSeconds = POSE_INTRO_SECONDS + poseDurationSeconds;
+
+  return totalSeconds * 1000; // Convert to milliseconds
+}
 
 export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseRealtimeYogaOptions) {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
@@ -118,14 +134,17 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
       const handleShowNextPose = (callId: string) => {
         const now = Date.now();
         const elapsed = now - poseStartTimeRef.current;
-        const remaining = MIN_POSE_DURATION_MS - elapsed;
+        const currentPoseIndex = currentPoseIndexRef.current;
+        const minDuration = calculatePoseDuration(flow, currentPoseIndex);
+        const remaining = minDuration - elapsed;
 
+        const currentPose = flow.poses[currentPoseIndex];
         console.log(`[YOGA] ===== SHOW_NEXT_POSE CALLED =====`);
-        console.log(`[YOGA] Current pose index: ${currentPoseIndexRef.current}`);
-        console.log(`[YOGA] Pose started at: ${new Date(poseStartTimeRef.current).toISOString()}`);
-        console.log(`[YOGA] Current time: ${new Date(now).toISOString()}`);
+        console.log(`[YOGA] Current pose: ${currentPoseIndex} (${currentPose.pose.englishName})`);
+        console.log(`[YOGA] Pose duration setting: ${currentPose.duration} ${flow.timerMode}`);
+        console.log(`[YOGA] Breath pace: ${flow.breathPace} (${BREATH_PACE_SECONDS[flow.breathPace]}s per breath)`);
+        console.log(`[YOGA] Calculated min duration: ${Math.round(minDuration / 1000)}s (${POSE_INTRO_SECONDS}s intro + ${Math.round((minDuration / 1000) - POSE_INTRO_SECONDS)}s hold)`);
         console.log(`[YOGA] Elapsed: ${Math.round(elapsed / 1000)}s`);
-        console.log(`[YOGA] Min duration: ${MIN_POSE_DURATION_MS / 1000}s`);
         console.log(`[YOGA] Remaining: ${Math.round(remaining / 1000)}s`);
 
         if (remaining > 0) {
@@ -340,10 +359,14 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
     }
 
     const startTime = Date.now();
+    const firstPoseDuration = calculatePoseDuration(flow, 0);
     console.log('[YOGA] ===== SESSION STARTING =====');
     console.log(`[YOGA] Start time: ${new Date(startTime).toISOString()}`);
     console.log(`[YOGA] Total poses: ${flow.poses.length}`);
-    console.log(`[YOGA] Min pose duration: ${MIN_POSE_DURATION_MS / 1000}s`);
+    console.log(`[YOGA] Timer mode: ${flow.timerMode}`);
+    console.log(`[YOGA] Breath pace: ${flow.breathPace} (${BREATH_PACE_SECONDS[flow.breathPace]}s per breath)`);
+    console.log(`[YOGA] First pose: ${flow.poses[0].pose.englishName}`);
+    console.log(`[YOGA] First pose min duration: ${Math.round(firstPoseDuration / 1000)}s`);
     console.log('[YOGA] ==============================');
 
     sessionActiveRef.current = true;
