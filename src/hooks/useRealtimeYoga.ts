@@ -168,8 +168,24 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
             item: {
               type: 'function_call_output',
               call_id: callId,
-              output: `Wacht nog ${secondsLeft} seconden. Blijf de huidige pose begeleiden.`,
+              output: `Wacht nog ${secondsLeft} seconden voordat je weer show_next_pose aanroept. Blijf ondertussen de student begeleiden met rustige aanmoediging.`,
             },
+          }));
+
+          // Send user message to guide AI behavior during wait
+          dc.send(JSON.stringify({
+            type: 'conversation.item.create',
+            item: {
+              type: 'message',
+              role: 'user',
+              content: [{ type: 'input_text', text: `Blijf de huidige pose begeleiden. Geef rustige aanmoediging. Probeer show_next_pose opnieuw over ${secondsLeft} seconden.` }],
+            },
+          }));
+
+          // Request response so AI continues
+          dc.send(JSON.stringify({
+            type: 'response.create',
+            response: { modalities: ['audio', 'text'] },
           }));
         } else {
           // Timer done - advance to next pose
