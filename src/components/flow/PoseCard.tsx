@@ -56,64 +56,62 @@ export function PoseCard({
         )}
 
         {/* Pose image with circular progress */}
-        <div className="relative z-10 w-full flex items-center justify-center" style={{ height: '380px' }}>
-          <div className="relative">
-            {/* Progress ring SVG */}
-            {isSessionActive && (
-              <svg
-                width={circleSize}
-                height={circleSize}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-                style={{ transform: 'translate(-50%, -50%) rotate(-90deg)' }}
-              >
-                {/* Background circle */}
-                <circle
-                  cx={circleSize / 2}
-                  cy={circleSize / 2}
-                  r={radius}
-                  fill="none"
-                  stroke="rgba(107, 142, 107, 0.15)"
-                  strokeWidth={strokeWidth}
-                />
-                {/* Progress circle */}
-                <circle
-                  cx={circleSize / 2}
-                  cy={circleSize / 2}
-                  r={radius}
-                  fill="none"
-                  stroke="var(--primary)"
-                  strokeWidth={strokeWidth}
-                  strokeLinecap="round"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={strokeDashoffset}
-                  style={{ transition: 'stroke-dashoffset 0.1s linear' }}
-                />
-              </svg>
-            )}
-
-            {/* Pose image container */}
-            <div
-              className={`flex items-center justify-center ${side === 'left' ? 'scale-x-[-1]' : ''}`}
-              style={{
-                width: '320px',
-                height: '320px',
-                borderRadius: '50%',
-                overflow: 'hidden',
-                background: 'rgba(255, 255, 255, 0.7)',
-                boxShadow: '0 8px 40px rgba(107, 142, 107, 0.15), 0 4px 20px rgba(0, 0, 0, 0.05)',
-              }}
+        <div className="relative z-10 flex items-center justify-center" style={{ width: '340px', height: '340px' }}>
+          {/* Progress ring SVG */}
+          {isSessionActive && (
+            <svg
+              width={circleSize}
+              height={circleSize}
+              className="absolute inset-0"
+              style={{ transform: 'rotate(-90deg)' }}
             >
-              <img
-                src={pose.imageUrl}
-                alt={pose.englishName}
-                className="w-full h-full object-cover object-top"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                }}
+              {/* Background circle */}
+              <circle
+                cx={circleSize / 2}
+                cy={circleSize / 2}
+                r={radius}
+                fill="none"
+                stroke="rgba(107, 142, 107, 0.15)"
+                strokeWidth={strokeWidth}
               />
-              <span className="text-8xl hidden">🧘</span>
-            </div>
+              {/* Progress circle */}
+              <circle
+                cx={circleSize / 2}
+                cy={circleSize / 2}
+                r={radius}
+                fill="none"
+                stroke="var(--primary)"
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                style={{ transition: 'stroke-dashoffset 0.1s linear' }}
+              />
+            </svg>
+          )}
+
+          {/* Pose image container */}
+          <div
+            className={`absolute flex items-center justify-center ${side === 'left' ? 'scale-x-[-1]' : ''}`}
+            style={{
+              width: '320px',
+              height: '320px',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              background: 'rgba(255, 255, 255, 0.7)',
+              boxShadow: '0 8px 40px rgba(107, 142, 107, 0.15), 0 4px 20px rgba(0, 0, 0, 0.05)',
+            }}
+          >
+            <img
+              src={pose.imageUrl}
+              alt={pose.englishName}
+              className="w-full h-full object-cover object-top"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+            <span className="text-8xl hidden">🧘</span>
           </div>
         </div>
       </div>
