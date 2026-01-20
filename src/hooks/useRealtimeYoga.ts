@@ -168,7 +168,7 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
             item: {
               type: 'function_call_output',
               call_id: callId,
-              output: JSON.stringify({ status: 'wait', seconds_remaining: secondsLeft }),
+              output: `Wacht nog ${secondsLeft} seconden. Blijf de huidige pose begeleiden.`,
             },
           }));
         } else {
@@ -186,7 +186,7 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
               item: {
                 type: 'function_call_output',
                 call_id: callId,
-                output: JSON.stringify({ status: 'complete', message: 'Dit was de laatste pose. Sluit de sessie af met Namaste.' }),
+                output: 'Dit was de laatste pose. Sluit de sessie af met Namaste en bedank de student.',
               },
             }));
 
@@ -202,19 +202,32 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
             poseStartTimeRef.current = newStartTime;
             onShowPoseRef.current?.(nextIndex);
 
+            // Send tool output
             dc.send(JSON.stringify({
               type: 'conversation.item.create',
               item: {
                 type: 'function_call_output',
                 call_id: callId,
-                output: JSON.stringify({ status: 'ok', next_pose: nextPose.pose.englishName }),
+                output: `Ga nu door naar: ${nextPose.pose.englishName}`,
               },
             }));
           }
         }
         console.log(`[YOGA] ===================================`);
 
-        // Request AI to continue
+        // Request AI to continue with explicit instruction for next pose
+        if (remaining <= 0 && currentPoseIndexRef.current < flow.poses.length) {
+          const currentPose = flow.poses[currentPoseIndexRef.current];
+          dc.send(JSON.stringify({
+            type: 'conversation.item.create',
+            item: {
+              type: 'message',
+              role: 'user',
+              content: [{ type: 'input_text', text: `Begeleid nu ${currentPose.pose.englishName}.` }],
+            },
+          }));
+        }
+
         dc.send(JSON.stringify({
           type: 'response.create',
           response: { modalities: ['audio', 'text'] },
