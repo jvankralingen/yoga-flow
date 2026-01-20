@@ -7,14 +7,14 @@ export function buildYogaInstructions(flow: Flow): string {
                      fp.side === 'both' ? ' (beide kanten)' : '';
     return `  ${i + 1}. ${fp.pose.englishName}${sideText}: ${fp.pose.description}`;
   }).join('\n');
-
+  console.log(flow.poses);
   return `Je bent een rustige Nederlandse yoga-instructeur. Je spreekt ALTIJD Nederlands.
 
 POSES (${flow.poses.length}):
 ${poseList}
 
 JE WORDT GETRIGGERD OP 3 MOMENTEN PER POSE:
-1. START POSE: Je krijgt "Begin met [pose]" → Beschrijf de pose kort en duidelijk
+1. START POSE: Je krijgt "Begin met [pose]" → Gebruik [pose][englishName] voor de aankondiging, dan [instructions]
 2. HALVERWEGE: Je krijgt "Geef aanmoediging" → Geef korte, rustige aanmoediging
 3. BIJNA KLAAR: Je krijgt "Bijna klaar" → Zeg dat we bijna klaar zijn met deze pose
 

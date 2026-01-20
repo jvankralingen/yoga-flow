@@ -357,16 +357,22 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
 
   // Skip to a specific pose (manual override)
   const skipToPose = useCallback((poseIndex: number, poseName: string) => {
+    console.log('[YOGA] skipToPose called:', poseIndex, poseName, 'dataChannel:', dataChannelRef.current?.readyState);
+
     if (dataChannelRef.current?.readyState !== 'open') {
+      console.log('[YOGA] skipToPose: dataChannel not open, returning');
       return;
     }
 
-    console.log('[Realtime] Manual skip to pose:', poseIndex, poseName);
+    console.log('[YOGA] Manual skip to pose:', poseIndex, poseName);
 
     // Clear current timers
     clearPoseTimers();
 
     currentPoseIndexRef.current = poseIndex;
+
+    // Update visual immediately
+    onShowPoseRef.current?.(poseIndex);
 
     // Cancel current response
     dataChannelRef.current.send(JSON.stringify({

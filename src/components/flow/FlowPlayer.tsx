@@ -146,8 +146,10 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
       const newIndex = currentIndex - 1;
       const prevPose = flow.poses[newIndex];
 
+      console.log('[FlowPlayer] goToPrevious:', newIndex, prevPose.pose.englishName);
       setCurrentIndex(newIndex);
 
+      // If session is active, also update the AI/timers
       if (isConnected && isSessionActive) {
         skipToPose(newIndex, prevPose.pose.englishName);
       }
@@ -162,8 +164,10 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
       const newIndex = currentIndex + 1;
       const nextPose = flow.poses[newIndex];
 
+      console.log('[FlowPlayer] goToNext:', newIndex, nextPose.pose.englishName);
       setCurrentIndex(newIndex);
 
+      // If session is active, also update the AI/timers
       if (isConnected && isSessionActive) {
         skipToPose(newIndex, nextPose.pose.englishName);
       }
