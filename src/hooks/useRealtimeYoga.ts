@@ -24,6 +24,7 @@ function calculatePoseDuration(flow: Flow, poseIndex: number): number {
 export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseRealtimeYogaOptions) {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [timerProgress, setTimerProgress] = useState(0); // 0 to 1
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
@@ -43,7 +44,10 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
     halfway: NodeJS.Timeout | null;
     almostDone: NodeJS.Timeout | null;
     done: NodeJS.Timeout | null;
-  }>({ halfway: null, almostDone: null, done: null });
+    progressInterval: NodeJS.Timeout | null;
+  }>({ halfway: null, almostDone: null, done: null, progressInterval: null });
+  const poseStartTimeRef = useRef(0);
+  const poseDurationRef = useRef(0);
 
   onShowPoseRef.current = onShowPose;
   onSessionCompleteRef.current = onSessionComplete;
@@ -77,7 +81,9 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
     if (poseTimersRef.current.halfway) clearTimeout(poseTimersRef.current.halfway);
     if (poseTimersRef.current.almostDone) clearTimeout(poseTimersRef.current.almostDone);
     if (poseTimersRef.current.done) clearTimeout(poseTimersRef.current.done);
-    poseTimersRef.current = { halfway: null, almostDone: null, done: null };
+    if (poseTimersRef.current.progressInterval) clearInterval(poseTimersRef.current.progressInterval);
+    poseTimersRef.current = { halfway: null, almostDone: null, done: null, progressInterval: null };
+    setTimerProgress(0);
   }, []);
 
   // Start timers for a pose
@@ -90,11 +96,23 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
     const fullBreathSeconds = breathPace * 2;
     const twoBreathsMs = 2 * fullBreathSeconds * 1000;
 
+    // Store for progress calculation
+    poseStartTimeRef.current = Date.now();
+    poseDurationRef.current = duration;
+    setTimerProgress(0);
+
     console.log(`[YOGA] ===== STARTING POSE ${poseIndex}: ${pose.pose.englishName} =====`);
     console.log(`[YOGA] Duration: ${duration / 1000}s`);
     console.log(`[YOGA] Halfway at: ${duration / 2 / 1000}s`);
     console.log(`[YOGA] Almost done at: ${(duration - twoBreathsMs) / 1000}s`);
     console.log(`[YOGA] ===========================================`);
+
+    // Progress update interval (every 100ms)
+    poseTimersRef.current.progressInterval = setInterval(() => {
+      const elapsed = Date.now() - poseStartTimeRef.current;
+      const progress = Math.min(elapsed / poseDurationRef.current, 1);
+      setTimerProgress(progress);
+    }, 100);
 
     // Halfway point - trigger encouragement
     poseTimersRef.current.halfway = setTimeout(() => {
@@ -405,6 +423,7 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
     status,
     isConnected: status === 'connected',
     isSpeaking,
+    timerProgress,
     connect,
     disconnect,
     cancelResponse,

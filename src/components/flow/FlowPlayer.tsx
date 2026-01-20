@@ -78,6 +78,7 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
     status: voiceStatus,
     isConnected,
     isSpeaking,
+    timerProgress,
     connect,
     disconnect,
     cancelResponse,
@@ -380,6 +381,7 @@ export function FlowPlayer({ flow }: FlowPlayerProps) {
           isRunning={false}
           isSessionActive={isSessionActive}
           progress={currentIndex / flow.poses.length}
+          timerProgress={timerProgress}
           onToggle={handleStart}
           hideTimer={true}
         />
