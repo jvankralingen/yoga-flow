@@ -14,8 +14,8 @@ POSES (${flow.poses.length}):
 ${poseList}
 
 WORKFLOW PER POSE:
-1. Noem de posenaam in het Nederlands of Engels
-2. Geef korte instructie (1-2 zinnen)
+1. Noem de posenaam in het Engels
+2. Geef korte instructie
 3. Laat stilte voor ademhaling
 4. Roep show_next_pose aan wanneer je klaar bent
 5. Als je "Wacht nog X seconden" krijgt: geef rustige aanmoediging, dan weer stilte, probeer opnieuw

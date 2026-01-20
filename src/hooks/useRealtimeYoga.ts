@@ -215,23 +215,27 @@ export function useRealtimeYoga({ flow, onShowPose, onSessionComplete }: UseReal
         }
         console.log(`[YOGA] ===================================`);
 
-        // Request AI to continue with explicit instruction for next pose
-        if (remaining <= 0 && currentPoseIndexRef.current < flow.poses.length) {
-          const currentPose = flow.poses[currentPoseIndexRef.current];
+        // Only request AI to continue if we're advancing to next pose or session complete
+        if (remaining <= 0) {
+          if (currentPoseIndexRef.current < flow.poses.length) {
+            // Moving to next pose - give explicit instruction
+            const currentPose = flow.poses[currentPoseIndexRef.current];
+            dc.send(JSON.stringify({
+              type: 'conversation.item.create',
+              item: {
+                type: 'message',
+                role: 'user',
+                content: [{ type: 'input_text', text: `Begeleid nu ${currentPose.pose.englishName}.` }],
+              },
+            }));
+          }
+          // Request response for next pose or session end
           dc.send(JSON.stringify({
-            type: 'conversation.item.create',
-            item: {
-              type: 'message',
-              role: 'user',
-              content: [{ type: 'input_text', text: `Begeleid nu ${currentPose.pose.englishName}.` }],
-            },
+            type: 'response.create',
+            response: { modalities: ['audio', 'text'] },
           }));
         }
-
-        dc.send(JSON.stringify({
-          type: 'response.create',
-          response: { modalities: ['audio', 'text'] },
-        }));
+        // If remaining > 0: Don't send response.create - AI will continue on its own
       };
 
       dc.onmessage = (event) => {
